@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -66,83 +67,73 @@ public class Aws4SignerForQueryString extends Aws4SignerBase {
       super(signatureWire, headerTag, creds, timestampProvider, serviceAndRegion, crypto);
    }
 
-
    protected HttpRequest sign(HttpRequest request, long timeInSeconds) throws HttpException {
       checkNotNull(request, "request is not ready to sign");
       checkNotNull(request.getEndpoint(), "request is not ready to sign, request.endpoint not present.");
 
-      // get host from request endpoint.
       String host = request.getEndpoint().getHost();
-
       Date date = timestampProvider.get();
       String timestamp = timestampFormat.format(date);
       String datestamp = dateFormat.format(date);
-
       String service = serviceAndRegion.service();
       String region = serviceAndRegion.region(host);
       String credentialScope = Joiner.on('/').join(datestamp, region, service, "aws4_request");
 
-      // different with signature with Authorization header
-      HttpRequest.Builder<?> requestBuilder = request.toBuilder() //
-            // sign for temporary access use query string parameter:
-            // X-Amz-Algorithm, X-Amz-Credential, X-Amz-Date, X-Amz-Expires, X-Amz-SignedHeaders, X-Amz-Signature
-            // remove Authorization, x-amz-content-sha256, X-Amz-Date headers
-            .removeHeader(AUTHORIZATION_HEADER)
-            .removeHeader(AMZ_CONTENT_SHA256_HEADER)
-            .removeHeader(AMZ_DATE_HEADER);
-
-      ImmutableMap.Builder<String, String> signedHeadersBuilder = ImmutableSortedMap.<String, String>naturalOrder(); //
-      Uris.UriBuilder endpointBuilder = Uris.uriBuilder(request.getEndpoint());
-
-
-      // Canonical Headers
-      // must include the HTTP host header.
-      // If you plan to include any of the x-amz-* headers, these headers must also be added for signature calculation.
-      // You can optionally add all other headers that you plan to include in your request.
-      // For added security, you should sign as many headers as possible.
-
-      // HOST
-      host = hostHeaderFor(request.getEndpoint());
-      signedHeadersBuilder.put("host", host);
-      ImmutableMap<String, String> signedHeaders = signedHeadersBuilder.build();
+      HttpRequest.Builder<?> requestBuilder = initializeRequestBuilder(request);
+      ImmutableMap<String, String> signedHeaders = constructCanonicalHeaders(request, host);
+      Uris.UriBuilder endpointBuilder = constructUriBuilder(request, signedHeaders);
 
       Credentials credentials = creds.get();
+      addSecurityTokenIfNeeded(endpointBuilder, credentials);
 
-      if (credentials instanceof SessionCredentials) {
-         String token = SessionCredentials.class.cast(credentials).getSessionToken();
-         // different with signature with Authorization header
-         endpointBuilder.replaceQuery(AMZ_SECURITY_TOKEN_PARAM, token);
-      }
-
-      // X-Amz-Algorithm=HMAC-SHA256
-      endpointBuilder.replaceQuery(AMZ_ALGORITHM_PARAM, AwsSignatureV4Constants.AMZ_ALGORITHM_HMAC_SHA256);
-
-      // X-Amz-Credential=<your-access-key-id>/<date>/<AWS-region>/<AWS-service>/aws4_request.
-      String credential = Joiner.on("/").join(credentials.identity, credentialScope);
-      endpointBuilder.replaceQuery(AMZ_CREDENTIAL_PARAM, credential);
-
-      // X-Amz-Date=ISO 8601 format, for example, 20130721T201207Z
-      endpointBuilder.replaceQuery(AMZ_DATE_PARAM, timestamp);
-
-      // X-Amz-Expires=time in seconds
-      endpointBuilder.replaceQuery(AMZ_EXPIRES_PARAM, String.valueOf(timeInSeconds));
-
-      // X-Amz-SignedHeaders=HTTP host header is required.
-      endpointBuilder.replaceQuery(AMZ_SIGNEDHEADERS_PARAM, Joiner.on(';').join(signedHeaders.keySet()));
+      addQueryParameters(endpointBuilder, credentials, credentialScope, timestamp, timeInSeconds, signedHeaders);
 
       String stringToSign = createStringToSign(request.getMethod(), endpointBuilder.build(), signedHeaders, timestamp, credentialScope,
             getPayloadHash());
 
       signatureWire.getWireLog().debug("<< " + stringToSign);
 
-
       byte[] signatureKey = signatureKey(credentials.credential, datestamp, region, service);
       String signature = base16().lowerCase().encode(hmacSHA256(stringToSign, signatureKey));
 
-      // X-Amz-Signature=Signature
       endpointBuilder.replaceQuery(AMZ_SIGNATURE_PARAM, signature);
 
       return requestBuilder.endpoint(endpointBuilder.build()).build();
+   }
+
+   private HttpRequest.Builder<?> initializeRequestBuilder(HttpRequest request) {
+      return request.toBuilder()
+            .removeHeader(AUTHORIZATION_HEADER)
+            .removeHeader(AMZ_CONTENT_SHA256_HEADER)
+            .removeHeader(AMZ_DATE_HEADER);
+   }
+
+   private ImmutableMap<String, String> constructCanonicalHeaders(HttpRequest request, String host) {
+      ImmutableMap.Builder<String, String> signedHeadersBuilder = ImmutableSortedMap.<String, String>naturalOrder();
+      String hostHeader = hostHeaderFor(request.getEndpoint());
+      signedHeadersBuilder.put("host", hostHeader);
+      return signedHeadersBuilder.build();
+   }
+
+   private Uris.UriBuilder constructUriBuilder(HttpRequest request, ImmutableMap<String, String> signedHeaders) {
+      return Uris.uriBuilder(request.getEndpoint());
+   }
+
+   private void addSecurityTokenIfNeeded(Uris.UriBuilder endpointBuilder, Credentials credentials) {
+      if (credentials instanceof SessionCredentials) {
+         String token = SessionCredentials.class.cast(credentials).getSessionToken();
+         endpointBuilder.replaceQuery(AMZ_SECURITY_TOKEN_PARAM, token);
+      }
+   }
+
+   private void addQueryParameters(Uris.UriBuilder endpointBuilder, Credentials credentials, String credentialScope, String timestamp,
+                                   long timeInSeconds, ImmutableMap<String, String> signedHeaders) {
+      endpointBuilder
+            .replaceQuery(AMZ_ALGORITHM_PARAM, AwsSignatureV4Constants.AMZ_ALGORITHM_HMAC_SHA256)
+            .replaceQuery(AMZ_CREDENTIAL_PARAM, Joiner.on("/").join(credentials.identity, credentialScope))
+            .replaceQuery(AMZ_DATE_PARAM, timestamp)
+            .replaceQuery(AMZ_EXPIRES_PARAM, String.valueOf(timeInSeconds))
+            .replaceQuery(AMZ_SIGNEDHEADERS_PARAM, Joiner.on(';').join(signedHeaders.keySet()));
    }
 
    protected String getPayloadHash() {
