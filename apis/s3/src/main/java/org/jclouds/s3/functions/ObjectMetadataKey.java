@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,16 +18,17 @@
 package org.jclouds.s3.functions;
 
 import jakarta.inject.Singleton;
-
 import org.jclouds.s3.domain.ObjectMetadata;
-
 import com.google.common.base.Function;
 
 @Singleton
 public class ObjectMetadataKey implements Function<Object, String> {
 
+   @Override
    public String apply(Object from) {
-      return ((ObjectMetadata) from).getKey();
+      if (from instanceof ObjectMetadata) {
+         return ((ObjectMetadata) from).getKey();
+      }
+      throw new IllegalArgumentException("Invalid input type. Expected ObjectMetadata.");
    }
-
 }
