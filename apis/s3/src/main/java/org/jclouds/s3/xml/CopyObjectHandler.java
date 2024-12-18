@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.xml;
 
 import static org.jclouds.util.SaxUtils.currentOrNull;
@@ -46,15 +31,29 @@ public class CopyObjectHandler extends ParseSax.HandlerWithResult<ObjectMetadata
    }
 
    public void endElement(String uri, String name, String qName) {
+      handleETag(qName);
+      handleLastModified(qName);
+      handleCopyObjectResult(qName);
+      currentText.setLength(0);
+   }
+
+   private void handleETag(String qName) {
       if (qName.equals("ETag")) {
          this.currentETag = currentOrNull(currentText);
-      } else if (qName.equals("LastModified")) {
+      }
+   }
+
+   private void handleLastModified(String qName) {
+      if (qName.equals("LastModified")) {
          this.currentLastModified = dateParser
              .iso8601DateOrSecondsDateParse(currentOrNull(currentText));
-      } else if (qName.equals("CopyObjectResult")) {
+      }
+   }
+
+   private void handleCopyObjectResult(String qName) {
+      if (qName.equals("CopyObjectResult")) {
          metadata = new CopyObjectResult(currentLastModified, currentETag);
       }
-      currentText.setLength(0);
    }
 
    public void characters(char[] ch, int start, int length) {
