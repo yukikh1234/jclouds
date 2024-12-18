@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.cloudwatch;
 
 import static org.jclouds.aws.reference.AWSConstants.PROPERTY_AUTH_TAG;
@@ -34,11 +19,11 @@ import com.google.auto.service.AutoService;
 @AutoService(ApiMetadata.class)
 public class CloudWatchApiMetadata extends BaseHttpApiMetadata {
 
-
-   @Override
-   public Builder<?> toBuilder() {
-      return new ConcreteBuilder().fromApiMetadata(this);
-   }
+   private static final String IDENTITY_NAME = "Access Key ID";
+   private static final String CREDENTIAL_NAME = "Secret Access Key";
+   private static final String VERSION = "2010-08-01";
+   private static final String DOCUMENTATION_URL = "http://docs.amazonwebservices.com/AmazonCloudWatch/latest/APIReference/";
+   private static final String DEFAULT_ENDPOINT = "https://monitoring.us-east-1.amazonaws.com";
 
    public CloudWatchApiMetadata() {
       this(new ConcreteBuilder());
@@ -46,6 +31,11 @@ public class CloudWatchApiMetadata extends BaseHttpApiMetadata {
 
    protected CloudWatchApiMetadata(Builder<?> builder) {
       super(builder);
+   }
+
+   @Override
+   public Builder<?> toBuilder() {
+      return new ConcreteBuilder().fromApiMetadata(this);
    }
 
    public static Properties defaultProperties() {
@@ -60,11 +50,11 @@ public class CloudWatchApiMetadata extends BaseHttpApiMetadata {
       protected Builder() {
          id("cloudwatch")
          .name("Amazon CloudWatch Api")
-         .identityName("Access Key ID")
-         .credentialName("Secret Access Key")
-         .version("2010-08-01")
-         .documentation(URI.create("http://docs.amazonwebservices.com/AmazonCloudWatch/latest/APIReference/"))
-         .defaultEndpoint("https://monitoring.us-east-1.amazonaws.com")
+         .identityName(IDENTITY_NAME)
+         .credentialName(CREDENTIAL_NAME)
+         .version(VERSION)
+         .documentation(URI.create(DOCUMENTATION_URL))
+         .defaultEndpoint(DEFAULT_ENDPOINT)
          .defaultProperties(CloudWatchApiMetadata.defaultProperties())
          .defaultModule(CloudWatchHttpApiModule.class);
       }
@@ -73,7 +63,6 @@ public class CloudWatchApiMetadata extends BaseHttpApiMetadata {
       public CloudWatchApiMetadata build() {
          return new CloudWatchApiMetadata(this);
       }
-      
    }
 
    private static class ConcreteBuilder extends Builder<ConcreteBuilder> {
