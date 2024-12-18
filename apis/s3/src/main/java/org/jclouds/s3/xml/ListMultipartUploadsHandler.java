@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.xml;
 
 import static org.jclouds.util.SaxUtils.currentOrNull;
@@ -66,61 +51,95 @@ public final class ListMultipartUploadsHandler extends ParseSax.HandlerWithResul
    }
 
    public void startElement(String uri, String name, String qName, Attributes attrs) {
-      if (qName.equals("Upload")) {
-         inUpload = true;
-      } else if (qName.equals("Initiator")) {
-         inInitiator = true;
-      } else if (qName.equals("Owner")) {
-         inOwner = true;
+      switch (qName) {
+         case "Upload":
+            inUpload = true;
+            break;
+         case "Initiator":
+            inInitiator = true;
+            break;
+         case "Owner":
+            inOwner = true;
+            break;
+         default:
+            break;
       }
       currentText.setLength(0);
    }
 
    public void endElement(String uri, String name, String qName) {
-      if (qName.equals("Bucket")) {
-         bucket = currentOrNull(currentText);
-      } else if (qName.equals("KeyMarker")) {
-         keyMarker = currentOrNull(currentText);
-      } else if (qName.equals("UploadIdMarker")) {
-         uploadIdMarker = currentOrNull(currentText);
-      } else if (qName.equals("NextKeyMarker")) {
-         nextKeyMarker = currentOrNull(currentText);
-      } else if (qName.equals("NextUploadIdMarker")) {
-         nextUploadIdMarker = currentOrNull(currentText);
-      } else if (qName.equals("MaxUploads")) {
-         maxUploads = Integer.parseInt(currentOrNull(currentText));
-      } else if (qName.equals("IsTruncated")) {
-         isTruncated = Boolean.parseBoolean(currentOrNull(currentText));
-      } else if (qName.equals("Key")) {
-         key = currentOrNull(currentText);
-      } else if (qName.equals("UploadId")) {
-         uploadId = currentOrNull(currentText);
-      } else if (qName.equals("StorageClass")) {
-         storageClass = ObjectMetadata.StorageClass.valueOf(currentOrNull(currentText));
-      } else if (qName.equals("Initiated")) {
-         initiated = dateParser.iso8601DateOrSecondsDateParse(currentOrNull(currentText));
-      } else if (qName.equals("Upload")) {
-         uploads.add(ListMultipartUploadsResponse.Upload.create(key, uploadId, initiator, owner, storageClass, initiated));
-         key = null;
-         uploadId = null;
-         id = null;
-         displayName = null;
-         initiator = null;
-         owner = null;
-         storageClass = null;
-         initiated = null;
-         inUpload = false;
-      } else if (qName.equals("Initiator")) {
-         initiator = new CanonicalUser(id, displayName);
-         id = null;
-         displayName = null;
-         inInitiator = false;
-      } else if (qName.equals("Owner")) {
-         owner = new CanonicalUser(id, displayName);
-         id = null;
-         displayName = null;
-         inOwner = false;
+      switch (qName) {
+         case "Bucket":
+            bucket = currentOrNull(currentText);
+            break;
+         case "KeyMarker":
+            keyMarker = currentOrNull(currentText);
+            break;
+         case "UploadIdMarker":
+            uploadIdMarker = currentOrNull(currentText);
+            break;
+         case "NextKeyMarker":
+            nextKeyMarker = currentOrNull(currentText);
+            break;
+         case "NextUploadIdMarker":
+            nextUploadIdMarker = currentOrNull(currentText);
+            break;
+         case "MaxUploads":
+            maxUploads = Integer.parseInt(currentOrNull(currentText));
+            break;
+         case "IsTruncated":
+            isTruncated = Boolean.parseBoolean(currentOrNull(currentText));
+            break;
+         case "Key":
+            key = currentOrNull(currentText);
+            break;
+         case "UploadId":
+            uploadId = currentOrNull(currentText);
+            break;
+         case "StorageClass":
+            storageClass = ObjectMetadata.StorageClass.valueOf(currentOrNull(currentText));
+            break;
+         case "Initiated":
+            initiated = dateParser.iso8601DateOrSecondsDateParse(currentOrNull(currentText));
+            break;
+         case "Upload":
+            addUpload();
+            break;
+         case "Initiator":
+            initiator = createCanonicalUser();
+            inInitiator = false;
+            break;
+         case "Owner":
+            owner = createCanonicalUser();
+            inOwner = false;
+            break;
+         default:
+            break;
       }
+   }
+
+   private void addUpload() {
+      uploads.add(ListMultipartUploadsResponse.Upload.create(key, uploadId, initiator, owner, storageClass, initiated));
+      resetUploadFields();
+   }
+
+   private CanonicalUser createCanonicalUser() {
+      CanonicalUser user = new CanonicalUser(id, displayName);
+      id = null;
+      displayName = null;
+      return user;
+   }
+
+   private void resetUploadFields() {
+      key = null;
+      uploadId = null;
+      id = null;
+      displayName = null;
+      initiator = null;
+      owner = null;
+      storageClass = null;
+      initiated = null;
+      inUpload = false;
    }
 
    public void characters(char[] ch, int start, int length) {
