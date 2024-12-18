@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -41,14 +42,22 @@ public class ErrorEntryHandler extends ParseSax.HandlerForGeneratedRequestWithRe
 
    @Override
    public void endElement(String uri, String name, String qName) throws SAXException {
-      if (equalsOrSuffix(qName, "Key")) {
-         key = accumulator.toString().trim();
-      } else if (equalsOrSuffix(qName, "Code")) {
-         code = accumulator.toString().trim();
-      } else if (equalsOrSuffix(qName, "Message")) {
-         message = accumulator.toString().trim();
-      }
+      processEndElement(qName);
       accumulator.setLength(0);
+   }
+
+   private void processEndElement(String qName) {
+      if (equalsOrSuffix(qName, "Key")) {
+         key = getTrimmedAccumulator();
+      } else if (equalsOrSuffix(qName, "Code")) {
+         code = getTrimmedAccumulator();
+      } else if (equalsOrSuffix(qName, "Message")) {
+         message = getTrimmedAccumulator();
+      }
+   }
+
+   private String getTrimmedAccumulator() {
+      return accumulator.toString().trim();
    }
 
    @Override
