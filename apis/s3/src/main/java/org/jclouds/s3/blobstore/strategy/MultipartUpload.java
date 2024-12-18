@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,19 +20,39 @@ package org.jclouds.s3.blobstore.strategy;
 public final class MultipartUpload {
 
    /* Maximum number of parts per upload */
-   public static final int MAX_NUMBER_OF_PARTS = 10000;
+   private static final int MAX_NUMBER_OF_PARTS = 10000;
    /* Maximum number of parts returned for a list parts request */
-   public static final int MAX_LIST_PARTS_RETURNED = 1000;
+   private static final int MAX_LIST_PARTS_RETURNED = 1000;
    /* Maximum number of multipart uploads returned in a list multipart uploads request */
-   public static final int MAX_LIST_MPU_RETURNED = 1000;
+   private static final int MAX_LIST_MPU_RETURNED = 1000;
 
    /*
     * part size 5 MB to 5 GB, last part can be < 5 MB
     */
-   public static final long MIN_PART_SIZE = 5242880L;
-   public static final long MAX_PART_SIZE = 5368709120L;
+   private static final long MIN_PART_SIZE = 5242880L;
+   private static final long MAX_PART_SIZE = 5368709120L;
 
    private MultipartUpload() {
-      throw new AssertionError("intentionally unimplemented");
+      // Prevent instantiation
+   }
+
+   public static int getMaxNumberOfParts() {
+       return MAX_NUMBER_OF_PARTS;
+   }
+
+   public static int getMaxListPartsReturned() {
+       return MAX_LIST_PARTS_RETURNED;
+   }
+
+   public static int getMaxListMpuReturned() {
+       return MAX_LIST_MPU_RETURNED;
+   }
+
+   public static long getMinPartSize() {
+       return MIN_PART_SIZE;
+   }
+
+   public static long getMaxPartSize() {
+       return MAX_PART_SIZE;
    }
 }
