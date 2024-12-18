@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -25,7 +26,10 @@ public class S3ParserModule extends AbstractModule {
 
    @Override
    protected void configure() {
-      bind(DateAdapter.class).to(Iso8601DateAdapter.class);
+      bindDateAdapter();
    }
 
+   private void bindDateAdapter() {
+      bind(DateAdapter.class).to(Iso8601DateAdapter.class);
+   }
 }
