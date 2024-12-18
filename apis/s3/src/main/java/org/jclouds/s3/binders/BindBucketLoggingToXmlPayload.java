@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -44,6 +45,7 @@ import com.google.common.base.Throwables;
 
 @Singleton
 public class BindBucketLoggingToXmlPayload implements Binder {
+
    @Override
    public <R extends HttpRequest> R bindToRequest(R request, Object payload) {
       BucketLogging from = (BucketLogging) payload;
@@ -65,9 +67,7 @@ public class BindBucketLoggingToXmlPayload implements Binder {
       Element loggingNode = elem(rootNode, "LoggingEnabled", document);
       elemWithText(loggingNode, "TargetBucket", bucketLogging.getTargetBucket(), document);
       elemWithText(loggingNode, "TargetPrefix", bucketLogging.getTargetPrefix(), document);
-      addGrants(elem(loggingNode, "TargetGrants", document),
-                bucketLogging.getTargetGrants(),
-                document);
+      addGrants(elem(loggingNode, "TargetGrants", document), bucketLogging.getTargetGrants(), document);
       return asString(document);
    }
 
@@ -77,21 +77,29 @@ public class BindBucketLoggingToXmlPayload implements Binder {
          Element granteeNode = elem(grantNode, "Grantee", document);
          granteeNode.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
 
-         if (grant.getGrantee() instanceof GroupGrantee) {
-            granteeNode.setAttribute("xsi:type", "Group");
-            elemWithText(granteeNode, "URI", grant.getGrantee().getIdentifier(), document);
-         } else if (grant.getGrantee() instanceof CanonicalUserGrantee) {
-            CanonicalUserGrantee grantee = (CanonicalUserGrantee) grant.getGrantee();
-            granteeNode.setAttribute("xsi:type", "CanonicalUser");
-            elemWithText(granteeNode, "ID", grantee.getIdentifier(), document);
-            if (grantee.getDisplayName() != null) {
-               elemWithText(granteeNode, "DisplayName", grantee.getDisplayName(), document);
-            }
-         } else if (grant.getGrantee() instanceof EmailAddressGrantee) {
-            granteeNode.setAttribute("xsi:type", "AmazonCustomerByEmail");
-            elemWithText(granteeNode, "EmailAddress", grant.getGrantee().getIdentifier(), document);
-         }
+         addGranteeDetails(grant, granteeNode, document);
          elemWithText(grantNode, "Permission", grant.getPermission(), document);
+      }
+   }
+
+   private static void addGranteeDetails(Grant grant, Element granteeNode, Document document) {
+      if (grant.getGrantee() instanceof GroupGrantee) {
+         granteeNode.setAttribute("xsi:type", "Group");
+         elemWithText(granteeNode, "URI", grant.getGrantee().getIdentifier(), document);
+      } else if (grant.getGrantee() instanceof CanonicalUserGrantee) {
+         handleCanonicalUserGrantee(grant, granteeNode, document);
+      } else if (grant.getGrantee() instanceof EmailAddressGrantee) {
+         granteeNode.setAttribute("xsi:type", "AmazonCustomerByEmail");
+         elemWithText(granteeNode, "EmailAddress", grant.getGrantee().getIdentifier(), document);
+      }
+   }
+
+   private static void handleCanonicalUserGrantee(Grant grant, Element granteeNode, Document document) {
+      CanonicalUserGrantee grantee = (CanonicalUserGrantee) grant.getGrantee();
+      granteeNode.setAttribute("xsi:type", "CanonicalUser");
+      elemWithText(granteeNode, "ID", grantee.getIdentifier(), document);
+      if (grantee.getDisplayName() != null) {
+         elemWithText(granteeNode, "DisplayName", grantee.getDisplayName(), document);
       }
    }
 }
