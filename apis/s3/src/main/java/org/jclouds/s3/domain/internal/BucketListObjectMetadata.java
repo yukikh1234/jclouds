@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -21,6 +22,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.net.URI;
 import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.io.payloads.BaseImmutableContentMetadata;
@@ -55,89 +57,56 @@ public class BucketListObjectMetadata implements ObjectMetadata {
       this.storageClass = storageClass;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public URI getUri() {
       return uri;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public String getKey() {
       return key;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public String getBucket() {
       return bucket;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public CanonicalUser getOwner() {
       return owner;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public StorageClass getStorageClass() {
       return storageClass;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public String getCacheControl() {
       return null;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public Date getLastModified() {
       return lastModified;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public String getETag() {
       return eTag;
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public int compareTo(ObjectMetadata o) {
       return (this == o) ? 0 : getUri().compareTo(o.getUri());
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public Map<String, String> getUserMetadata() {
       return ImmutableMap.of();
    }
 
-   /**
-    *{@inheritDoc}
-    */
    @Override
    public ContentMetadata getContentMetadata() {
       return contentMetadata;
@@ -145,27 +114,17 @@ public class BucketListObjectMetadata implements ObjectMetadata {
 
    @Override
    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((uri == null) ? 0 : uri.hashCode());
-      return result;
+      return Objects.hash(uri);
    }
 
    @Override
    public boolean equals(Object obj) {
       if (this == obj)
          return true;
-      if (obj == null)
-         return false;
-      if (getClass() != obj.getClass())
+      if (!(obj instanceof BucketListObjectMetadata))
          return false;
       BucketListObjectMetadata other = (BucketListObjectMetadata) obj;
-      if (uri == null) {
-         if (other.uri != null)
-            return false;
-      } else if (!uri.equals(other.uri))
-         return false;
-      return true;
+      return Objects.equals(uri, other.uri);
    }
 
    @Override
