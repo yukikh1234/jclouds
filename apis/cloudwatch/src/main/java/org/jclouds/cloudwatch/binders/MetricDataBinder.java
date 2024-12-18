@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -43,9 +44,6 @@ public class MetricDataBinder implements org.jclouds.rest.Binder {
       this.dateService = dateService;
    }
 
-   /**
-    * {@inheritDoc}
-    */
    @SuppressWarnings("unchecked")
    @Override
    public <R extends HttpRequest> R bindToRequest(R request, Object input) {
@@ -55,49 +53,55 @@ public class MetricDataBinder implements org.jclouds.rest.Binder {
       int metricDatumIndex = 1;
 
       for (MetricDatum metricDatum : metrics) {
-         int dimensionIndex = 1;
-
-         for (Dimension dimension : metricDatum.getDimensions()) {
-            formParameters.put("MetricData.member." + metricDatumIndex + ".Dimensions.member." + dimensionIndex +
-                                     ".Name", dimension.getName());
-            formParameters.put("MetricData.member." + metricDatumIndex + ".Dimensions.member." + dimensionIndex +
-                                     ".Value", dimension.getValue());
-            dimensionIndex++;
-         }
-
-         formParameters.put("MetricData.member." + metricDatumIndex + ".MetricName", metricDatum.getMetricName());
-
-
-         if (metricDatum.getStatisticValues().isPresent()) {
-            StatisticValues statisticValues = metricDatum.getStatisticValues().get();
-
-            formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.Maximum",
-                               String.valueOf(statisticValues.getMaximum()));
-            formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.Minimum",
-                               String.valueOf(statisticValues.getMinimum()));
-            formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.SampleCount",
-                               String.valueOf(statisticValues.getSampleCount()));
-            formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.Sum",
-                               String.valueOf(statisticValues.getSum()));
-         }
-         
-         if (metricDatum.getTimestamp().isPresent()) {
-            formParameters.put("MetricData.member." + metricDatumIndex + ".Timestamp",
-                               dateService.iso8601SecondsDateFormat(metricDatum.getTimestamp().get()));
-         }
-
-         formParameters.put("MetricData.member." + metricDatumIndex + ".Unit",
-                            String.valueOf(metricDatum.getUnit()));
-
-         if (metricDatum.getValue().isPresent()) {
-            formParameters.put("MetricData.member." + metricDatumIndex + ".Value",
-                     String.valueOf(metricDatum.getValue().get()));
-         }
-
+         bindDimensions(formParameters, metricDatum, metricDatumIndex);
+         bindMetricDatumAttributes(formParameters, metricDatum, metricDatumIndex);
          metricDatumIndex++;
       }
 
       return (R) request.toBuilder().replaceFormParams(formParameters.build()).build();
    }
 
+   private void bindDimensions(ImmutableMultimap.Builder<String, String> formParameters, MetricDatum metricDatum, int metricDatumIndex) {
+      int dimensionIndex = 1;
+
+      for (Dimension dimension : metricDatum.getDimensions()) {
+         formParameters.put("MetricData.member." + metricDatumIndex + ".Dimensions.member." + dimensionIndex +
+                                  ".Name", dimension.getName());
+         formParameters.put("MetricData.member." + metricDatumIndex + ".Dimensions.member." + dimensionIndex +
+                                  ".Value", dimension.getValue());
+         dimensionIndex++;
+      }
+   }
+
+   private void bindMetricDatumAttributes(ImmutableMultimap.Builder<String, String> formParameters, MetricDatum metricDatum, int metricDatumIndex) {
+      formParameters.put("MetricData.member." + metricDatumIndex + ".MetricName", metricDatum.getMetricName());
+
+      if (metricDatum.getStatisticValues().isPresent()) {
+         bindStatisticValues(formParameters, metricDatum.getStatisticValues().get(), metricDatumIndex);
+      }
+
+      if (metricDatum.getTimestamp().isPresent()) {
+         formParameters.put("MetricData.member." + metricDatumIndex + ".Timestamp",
+                            dateService.iso8601SecondsDateFormat(metricDatum.getTimestamp().get()));
+      }
+
+      formParameters.put("MetricData.member." + metricDatumIndex + ".Unit",
+                         String.valueOf(metricDatum.getUnit()));
+
+      if (metricDatum.getValue().isPresent()) {
+         formParameters.put("MetricData.member." + metricDatumIndex + ".Value",
+                  String.valueOf(metricDatum.getValue().get()));
+      }
+   }
+
+   private void bindStatisticValues(ImmutableMultimap.Builder<String, String> formParameters, StatisticValues statisticValues, int metricDatumIndex) {
+      formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.Maximum",
+                         String.valueOf(statisticValues.getMaximum()));
+      formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.Minimum",
+                         String.valueOf(statisticValues.getMinimum()));
+      formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.SampleCount",
+                         String.valueOf(statisticValues.getSampleCount()));
+      formParameters.put("MetricData.member." + metricDatumIndex + ".StatisticValues.Sum",
+                         String.valueOf(statisticValues.getSum()));
+   }
 }
