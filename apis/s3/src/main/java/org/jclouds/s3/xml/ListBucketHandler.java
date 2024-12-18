@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.xml;
 
 import static com.google.common.io.BaseEncoding.base16;
@@ -38,30 +23,23 @@ import org.xml.sax.Attributes;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
 
-/**
- * Parses the following XML document:
- * <p/>
- * ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01"
- */
 public class ListBucketHandler extends ParseSax.HandlerWithResult<ListBucketResponse> {
    private Builder<ObjectMetadata> contents = ImmutableSet.builder();
    private Builder<String> commonPrefixes = ImmutableSet.builder();
    private CanonicalUser currentOwner;
    private StringBuilder currentText = new StringBuilder();
-
    private ObjectMetadataBuilder builder = new ObjectMetadataBuilder();
-
    private final DateService dateParser;
-
    private String bucketName;
    private String prefix;
    private String marker;
    private int maxResults;
    private String delimiter;
    private boolean isTruncated;
-
-   /** Some blobs have a non-hex suffix when created by multi-part uploads such Amazon S3. */
    private static final Pattern ETAG_CONTENT_MD5_PATTERN = Pattern.compile("\"([0-9a-f]+)\"");
+   private boolean inCommonPrefixes;
+   private String currentKey;
+   private String nextMarker;
 
    @Inject
    public ListBucketHandler(DateService dateParser) {
@@ -75,10 +53,6 @@ public class ListBucketHandler extends ParseSax.HandlerWithResult<ListBucketResp
                commonPrefixes.build());
    }
 
-   private boolean inCommonPrefixes;
-   private String currentKey;
-   private String nextMarker;
-
    public void startElement(String uri, String name, String qName, Attributes attrs) {
       if (qName.equals("CommonPrefixes")) {
          inCommonPrefixes = true;
@@ -87,58 +61,137 @@ public class ListBucketHandler extends ParseSax.HandlerWithResult<ListBucketResp
    }
 
    public void endElement(String uri, String name, String qName) {
-      if (qName.equals("ID")) {
-    	 currentOwner.setId(currentOrNull(currentText));
-      } else if (qName.equals("DisplayName")) {
-         currentOwner.setDisplayName(currentOrNull(currentText));
-      } else if (qName.equals("Key")) { // content stuff
-         if (currentText.length() == 0) {
-            throw new RuntimeException("Object store returned empty key name");
-         }
-         currentKey = currentText.toString();
-         builder.key(currentKey);
-         builder.uri(uriBuilder(getRequest().getEndpoint()).clearQuery().appendPath(Strings2.urlEncode(currentKey))
-               .build());
-      } else if (qName.equals("LastModified")) {
-         builder.lastModified(dateParser
-               .iso8601DateOrSecondsDateParse(currentOrNull(currentText)));
-      } else if (qName.equals("ETag")) {
-         String currentETag = currentOrNull(currentText);
-         builder.eTag(currentETag);
-         Matcher matcher = ETAG_CONTENT_MD5_PATTERN.matcher(currentETag);
-         if (matcher.matches()) {
-            builder.contentMD5(base16().lowerCase().decode(matcher.group(1)));
-         }
-      } else if (qName.equals("Size")) {
-         builder.contentLength(Long.valueOf(currentOrNull(currentText)));
-      } else if (qName.equals("Owner")) {
-         builder.owner(currentOwner);
-         currentOwner = new CanonicalUser();
-      } else if (qName.equals("StorageClass")) {
-         builder.storageClass(ObjectMetadata.StorageClass.valueOf(currentOrNull(currentText)));
-      } else if (qName.equals("Contents")) {
-         contents.add(builder.build());
-         builder = new ObjectMetadataBuilder().bucket(bucketName);
-      } else if (qName.equals("Name")) {
-         this.bucketName = currentOrNull(currentText);
-         builder.bucket(bucketName);
-      } else if (qName.equals("Prefix")) {
-         String prefix = currentOrNull(currentText);
-         if (inCommonPrefixes)
-            commonPrefixes.add(prefix);
-         else
-            this.prefix = prefix;
-      } else if (qName.equals("Delimiter")) {
-         this.delimiter = currentOrNull(currentText);
-      } else if (qName.equals("Marker")) {
-         this.marker = currentOrNull(currentText);
-      } else if (qName.equals("NextMarker")) {
-         this.nextMarker = currentOrNull(currentText);
-      } else if (qName.equals("MaxKeys")) {
-         this.maxResults = Integer.parseInt(currentOrNull(currentText));
-      } else if (qName.equals("IsTruncated")) {
-         this.isTruncated = Boolean.parseBoolean(currentOrNull(currentText));
+      switch (qName) {
+         case "ID":
+            handleID();
+            break;
+         case "DisplayName":
+            handleDisplayName();
+            break;
+         case "Key":
+            handleKey(uri);
+            break;
+         case "LastModified":
+            handleLastModified();
+            break;
+         case "ETag":
+            handleETag();
+            break;
+         case "Size":
+            handleSize();
+            break;
+         case "Owner":
+            handleOwner();
+            break;
+         case "StorageClass":
+            handleStorageClass();
+            break;
+         case "Contents":
+            handleContents();
+            break;
+         case "Name":
+            handleName();
+            break;
+         case "Prefix":
+            handlePrefix();
+            break;
+         case "Delimiter":
+            handleDelimiter();
+            break;
+         case "Marker":
+            handleMarker();
+            break;
+         case "NextMarker":
+            handleNextMarker();
+            break;
+         case "MaxKeys":
+            handleMaxKeys();
+            break;
+         case "IsTruncated":
+            handleIsTruncated();
+            break;
       }
+   }
+
+   private void handleID() {
+      currentOwner.setId(currentOrNull(currentText));
+   }
+
+   private void handleDisplayName() {
+      currentOwner.setDisplayName(currentOrNull(currentText));
+   }
+
+   private void handleKey(String uri) {
+      if (currentText.length() == 0) {
+         throw new RuntimeException("Object store returned empty key name");
+      }
+      currentKey = currentText.toString();
+      builder.key(currentKey);
+      builder.uri(uriBuilder(getRequest().getEndpoint()).clearQuery().appendPath(Strings2.urlEncode(currentKey)).build());
+   }
+
+   private void handleLastModified() {
+      builder.lastModified(dateParser.iso8601DateOrSecondsDateParse(currentOrNull(currentText)));
+   }
+
+   private void handleETag() {
+      String currentETag = currentOrNull(currentText);
+      builder.eTag(currentETag);
+      Matcher matcher = ETAG_CONTENT_MD5_PATTERN.matcher(currentETag);
+      if (matcher.matches()) {
+         builder.contentMD5(base16().lowerCase().decode(matcher.group(1)));
+      }
+   }
+
+   private void handleSize() {
+      builder.contentLength(Long.valueOf(currentOrNull(currentText)));
+   }
+
+   private void handleOwner() {
+      builder.owner(currentOwner);
+      currentOwner = new CanonicalUser();
+   }
+
+   private void handleStorageClass() {
+      builder.storageClass(ObjectMetadata.StorageClass.valueOf(currentOrNull(currentText)));
+   }
+
+   private void handleContents() {
+      contents.add(builder.build());
+      builder = new ObjectMetadataBuilder().bucket(bucketName);
+   }
+
+   private void handleName() {
+      this.bucketName = currentOrNull(currentText);
+      builder.bucket(bucketName);
+   }
+
+   private void handlePrefix() {
+      String prefix = currentOrNull(currentText);
+      if (inCommonPrefixes)
+         commonPrefixes.add(prefix);
+      else
+         this.prefix = prefix;
+   }
+
+   private void handleDelimiter() {
+      this.delimiter = currentOrNull(currentText);
+   }
+
+   private void handleMarker() {
+      this.marker = currentOrNull(currentText);
+   }
+
+   private void handleNextMarker() {
+      this.nextMarker = currentOrNull(currentText);
+   }
+
+   private void handleMaxKeys() {
+      this.maxResults = Integer.parseInt(currentOrNull(currentText));
+   }
+
+   private void handleIsTruncated() {
+      this.isTruncated = Boolean.parseBoolean(currentOrNull(currentText));
    }
 
    public void characters(char[] ch, int start, int length) {
