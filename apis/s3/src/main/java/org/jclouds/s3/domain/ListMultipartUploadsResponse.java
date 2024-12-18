@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -35,9 +36,30 @@ public abstract class ListMultipartUploadsResponse {
    public abstract boolean isTruncated();
    public abstract List<Upload> uploads();
 
-   public static ListMultipartUploadsResponse create(String bucket, @Nullable String keyMarker, @Nullable String uploadIdMarker, @Nullable String nextKeyMarker, @Nullable String nextUploadIdMarker, int maxUploads, boolean isTruncated, List<Upload> uploads) {
+   public static ListMultipartUploadsResponse create(
+         String bucket,
+         @Nullable String keyMarker,
+         @Nullable String uploadIdMarker,
+         @Nullable String nextKeyMarker,
+         @Nullable String nextUploadIdMarker,
+         int maxUploads,
+         boolean isTruncated,
+         List<Upload> uploads) {
+      validateInputs(bucket, maxUploads, uploads);
       uploads = ImmutableList.copyOf(uploads);
       return new AutoValue_ListMultipartUploadsResponse(bucket, keyMarker, uploadIdMarker, nextKeyMarker, nextUploadIdMarker, maxUploads, isTruncated, uploads);
+   }
+
+   private static void validateInputs(String bucket, int maxUploads, List<Upload> uploads) {
+      if (bucket == null || bucket.isEmpty()) {
+         throw new IllegalArgumentException("Bucket name cannot be null or empty");
+      }
+      if (maxUploads < 0) {
+         throw new IllegalArgumentException("maxUploads cannot be negative");
+      }
+      if (uploads == null) {
+         throw new IllegalArgumentException("Uploads list cannot be null");
+      }
    }
 
    @AutoValue
@@ -49,9 +71,43 @@ public abstract class ListMultipartUploadsResponse {
       public abstract ObjectMetadata.StorageClass storageClass();
       public abstract Date initiated();
 
-      public static Upload create(String key, String uploadId, CanonicalUser initiator, CanonicalUser owner, ObjectMetadata.StorageClass storageClass, Date initiated) {
+      public static Upload create(
+            String key,
+            String uploadId,
+            CanonicalUser initiator,
+            CanonicalUser owner,
+            ObjectMetadata.StorageClass storageClass,
+            Date initiated) {
+         validateUploadInputs(key, uploadId, initiator, owner, storageClass, initiated);
          initiated = (Date) initiated.clone();
          return new AutoValue_ListMultipartUploadsResponse_Upload(key, uploadId, initiator, owner, storageClass, initiated);
+      }
+
+      private static void validateUploadInputs(
+            String key,
+            String uploadId,
+            CanonicalUser initiator,
+            CanonicalUser owner,
+            ObjectMetadata.StorageClass storageClass,
+            Date initiated) {
+         if (key == null || key.isEmpty()) {
+            throw new IllegalArgumentException("Key cannot be null or empty");
+         }
+         if (uploadId == null || uploadId.isEmpty()) {
+            throw new IllegalArgumentException("UploadId cannot be null or empty");
+         }
+         if (initiator == null) {
+            throw new IllegalArgumentException("Initiator cannot be null");
+         }
+         if (owner == null) {
+            throw new IllegalArgumentException("Owner cannot be null");
+         }
+         if (storageClass == null) {
+            throw new IllegalArgumentException("StorageClass cannot be null");
+         }
+         if (initiated == null) {
+            throw new IllegalArgumentException("Initiated date cannot be null");
+         }
       }
    }
 }
