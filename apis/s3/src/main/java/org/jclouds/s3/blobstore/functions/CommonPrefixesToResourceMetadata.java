@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -10,7 +11,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * WITHOUT WARRANTIES OR CONDITIONS, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -28,11 +29,16 @@ import com.google.common.base.Function;
 @Singleton
 public class CommonPrefixesToResourceMetadata implements Function<String, StorageMetadata> {
 
+   @Override
    public StorageMetadata apply(String from) {
-      MutableStorageMetadata returnVal = new MutableStorageMetadataImpl();
-      returnVal.setType(StorageType.RELATIVE_PATH);
-      returnVal.setName(from);
-      return returnVal;
+      MutableStorageMetadata metadata = createMetadata(from);
+      return metadata;
    }
 
+   private MutableStorageMetadata createMetadata(String name) {
+      MutableStorageMetadata metadata = new MutableStorageMetadataImpl();
+      metadata.setType(StorageType.RELATIVE_PATH);
+      metadata.setName(name);
+      return metadata;
+   }
 }
