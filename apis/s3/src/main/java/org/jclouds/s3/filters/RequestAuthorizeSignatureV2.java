@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.filters;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -133,31 +118,25 @@ public class RequestAuthorizeSignatureV2 implements RequestAuthorizeSignature, R
    }
 
    protected HttpRequest replaceAuthorizationHeader(HttpRequest request, String signature) {
-      request = request.toBuilder()
+      return request.toBuilder()
             .replaceHeader(HttpHeaders.AUTHORIZATION,
                   authTag + " " + creds.get().identity + ":" + signature).build();
-      return request;
    }
 
    HttpRequest replaceDateHeader(HttpRequest request) {
-      request = request.toBuilder().replaceHeader(HttpHeaders.DATE, timeStampProvider.get()).build();
-      return request;
+      return request.toBuilder().replaceHeader(HttpHeaders.DATE, timeStampProvider.get()).build();
    }
 
    public String createStringToSign(HttpRequest request) {
       utils.logRequest(signatureLog, request, ">>");
       SortedSetMultimap<String, String> canonicalizedHeaders = TreeMultimap.create();
       StringBuilder buffer = new StringBuilder();
-      // re-sign the request
       appendMethod(request, buffer);
       appendPayloadMetadata(request, buffer);
       appendHttpHeaders(request, canonicalizedHeaders);
-
-      // Remove default date timestamp if "x-amz-date" is set.
       if (canonicalizedHeaders.containsKey("x-" + headerTag + "-date")) {
          canonicalizedHeaders.removeAll("date");
       }
-
       appendAmzHeaders(canonicalizedHeaders, buffer);
       appendBucketName(request, buffer);
       appendUriPath(request, buffer);
@@ -177,8 +156,7 @@ public class RequestAuthorizeSignatureV2 implements RequestAuthorizeSignature, R
 
    public String sign(String toSign) {
       try {
-         ByteProcessor<byte[]> hmacSHA1 = asByteProcessor(
-               crypto.hmacSHA1(creds.get().credential.getBytes(UTF_8)));
+         ByteProcessor<byte[]> hmacSHA1 = asByteProcessor(crypto.hmacSHA1(creds.get().credential.getBytes(UTF_8)));
          return base64().encode(readBytes(toInputStream(toSign), hmacSHA1));
       } catch (Exception e) {
          throw new HttpException("error signing request", e);
@@ -191,55 +169,35 @@ public class RequestAuthorizeSignatureV2 implements RequestAuthorizeSignature, R
 
    @VisibleForTesting
    void appendAmzHeaders(SortedSetMultimap<String, String> canonicalizedHeaders, StringBuilder toSign) {
-      for (Map.Entry<String, String> header : canonicalizedHeaders.entries()) {
-         String key = header.getKey();
-         if (key.startsWith("x-" + headerTag + "-")) {
-            toSign.append(String.format("%s:%s\n", key.toLowerCase(), header.getValue()));
-         }
-      }
+      canonicalizedHeaders.entries().stream()
+            .filter(header -> header.getKey().startsWith("x-" + headerTag + "-"))
+            .forEach(header -> toSign.append(String.format("%s:%s\n", header.getKey().toLowerCase(), header.getValue())));
    }
 
    void appendPayloadMetadata(HttpRequest request, StringBuilder buffer) {
-      // note that we fall back to headers, and some requests such as ?uploads do not have a
-      // payload, yet specify payload related parameters
-      buffer.append(
-            request.getPayload() == null ? Strings.nullToEmpty(request.getFirstHeaderOrNull("Content-MD5")) :
-                  HttpUtils.nullToEmpty(
-                        request.getPayload() == null ? null : request.getPayload().getContentMetadata()
-                              .getContentMD5())).append("\n");
-      buffer.append(
-            Strings.nullToEmpty(
-                  request.getPayload() == null ? request.getFirstHeaderOrNull(HttpHeaders.CONTENT_TYPE)
-                        : request.getPayload().getContentMetadata().getContentType())).append("\n");
-      for (String header : FIRST_HEADERS_TO_SIGN)
-         buffer.append(HttpUtils.nullToEmpty(request.getHeaders().get(header))).append("\n");
+      buffer.append(request.getPayload() == null ? Strings.nullToEmpty(request.getFirstHeaderOrNull("Content-MD5")) :
+            HttpUtils.nullToEmpty(request.getPayload().getContentMetadata().getContentMD5())).append("\n");
+      buffer.append(Strings.nullToEmpty(request.getPayload() == null ? request.getFirstHeaderOrNull(HttpHeaders.CONTENT_TYPE)
+            : request.getPayload().getContentMetadata().getContentType())).append("\n");
+      FIRST_HEADERS_TO_SIGN.forEach(header -> buffer.append(HttpUtils.nullToEmpty(request.getHeaders().get(header))).append("\n"));
    }
 
    @VisibleForTesting
    void appendHttpHeaders(HttpRequest request, SortedSetMultimap<String, String> canonicalizedHeaders) {
-      Multimap<String, String> headers = request.getHeaders();
-      for (Map.Entry<String, String> header : headers.entries()) {
-         if (header.getKey() == null) {
-            continue;
-         }
-         String key = header.getKey().toString().toLowerCase(Locale.getDefault());
-         // Ignore any headers that are not particularly interesting.
-         if (key.equalsIgnoreCase(HttpHeaders.CONTENT_TYPE) || key.equalsIgnoreCase("Content-MD5")
-               || key.equalsIgnoreCase(HttpHeaders.DATE) || key.startsWith("x-" + headerTag + "-")) {
-            canonicalizedHeaders.put(key, header.getValue());
-         }
-      }
+      request.getHeaders().entries().stream()
+            .filter(header -> header.getKey() != null)
+            .forEach(header -> {
+               String key = header.getKey().toString().toLowerCase(Locale.getDefault());
+               if (key.equalsIgnoreCase(HttpHeaders.CONTENT_TYPE) || key.equalsIgnoreCase("Content-MD5")
+                     || key.equalsIgnoreCase(HttpHeaders.DATE) || key.startsWith("x-" + headerTag + "-")) {
+                  canonicalizedHeaders.put(key, header.getValue());
+               }
+            });
    }
 
    @VisibleForTesting
    void appendBucketName(HttpRequest req, StringBuilder toSign) {
       String bucketName = S3Utils.getBucketName(req);
-
-      // If we have a payload/bucket/container that is not all lowercase, vhost-style URLs are not an option and must be
-      // automatically converted to their path-based equivalent.  This should only be possible for AWS-S3 since it is
-      // the only S3 implementation configured to allow uppercase payload/bucket/container names.
-      //
-      // http://code.google.com/p/jclouds/issues/detail?id=992
       if (isVhostStyle && bucketName != null && bucketName.equals(bucketName.toLowerCase())) {
          toSign.append(servicePath).append(bucketName);
       }
@@ -247,32 +205,25 @@ public class RequestAuthorizeSignatureV2 implements RequestAuthorizeSignature, R
 
    @VisibleForTesting
    void appendUriPath(HttpRequest request, StringBuilder toSign) {
-
       toSign.append(request.getEndpoint().getRawPath());
-
-      // ...however, there are a few exceptions that must be included in the
-      // signed URI.
       if (request.getEndpoint().getQuery() != null) {
          Multimap<String, String> params = queryParser().apply(request.getEndpoint().getQuery());
          char separator = '?';
          for (String paramName : Ordering.natural().sortedCopy(params.keySet())) {
-            // Skip any parameters that aren't part of the canonical signed string
-            if (!SIGNED_PARAMETERS.contains(paramName)) {
-               continue;
+            if (SIGNED_PARAMETERS.contains(paramName)) {
+               toSign.append(separator).append(paramName);
+               String paramValue = get(params.get(paramName), 0);
+               if (paramValue != null) {
+                  toSign.append("=").append(paramValue);
+               }
+               separator = '&';
             }
-            toSign.append(separator).append(paramName);
-            String paramValue = get(params.get(paramName), 0);
-            if (paramValue != null) {
-               toSign.append("=").append(paramValue);
-            }
-            separator = '&';
          }
       }
    }
 
    @Override
    public HttpRequest signForTemporaryAccess(HttpRequest request, long timeInSeconds) {
-      // Update the 'DATE' header
       String dateString = request.getFirstHeaderOrNull(HttpHeaders.DATE);
       if (dateString == null) {
          dateString = timeStampProvider.get();
@@ -280,21 +231,16 @@ public class RequestAuthorizeSignatureV2 implements RequestAuthorizeSignature, R
       Date date = dateService.rfc1123DateParse(dateString);
       String expiration = String.valueOf(TimeUnit.MILLISECONDS.toSeconds(date.getTime()) + timeInSeconds);
       HttpRequest.Builder<?> builder = request.toBuilder()
-         .removeHeader(HttpHeaders.AUTHORIZATION)
-         .replaceHeader(HttpHeaders.DATE, expiration);
+            .removeHeader(HttpHeaders.AUTHORIZATION)
+            .replaceHeader(HttpHeaders.DATE, expiration);
       String stringToSign = createStringToSign(builder.build());
       String signature = sign(stringToSign);
-      HttpRequest ret = builder
-         .addQueryParam(HttpHeaders.EXPIRES, expiration)
-         .addQueryParam("AWSAccessKeyId", creds.get().identity)
-         // Signature MUST be the last parameter because if it isn't, even encoded '+' values in the
-         // signature will be converted to a space by a subsequent addQueryParameter.
-         // See HttpRequestTest.testAddBase64AndUrlEncodedQueryParams for more details.
-         .addQueryParam(S3Constants.TEMPORARY_SIGNATURE_PARAM, signature)
-         .removeHeader(HttpHeaders.DATE)
-         // remove signer created by RestAnnotationProcessor
-         .filters(ImmutableList.<HttpRequestFilter>of())
-         .build();
-      return ret;
+      return builder
+            .addQueryParam(HttpHeaders.EXPIRES, expiration)
+            .addQueryParam("AWSAccessKeyId", creds.get().identity)
+            .addQueryParam(S3Constants.TEMPORARY_SIGNATURE_PARAM, signature)
+            .removeHeader(HttpHeaders.DATE)
+            .filters(ImmutableList.<HttpRequestFilter>of())
+            .build();
    }
 }
