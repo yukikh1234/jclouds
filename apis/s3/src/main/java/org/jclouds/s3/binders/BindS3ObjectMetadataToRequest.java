@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -40,25 +41,37 @@ public class BindS3ObjectMetadataToRequest implements Binder {
    @SuppressWarnings("unchecked")
    @Override
    public <R extends HttpRequest> R bindToRequest(R request, Object input) {
+      validateInputAndRequest(request, input);
+      S3Object s3Object = (S3Object) input;
+      validateS3Object(s3Object);
+
+      if (isNonStandardStorageClass(s3Object)) {
+         request = addStorageClassHeader(request, s3Object.getMetadata().getStorageClass());
+      }
+
+      return metadataPrefixer.bindToRequest(request, s3Object.getMetadata().getUserMetadata());
+   }
+
+   private <R extends HttpRequest> void validateInputAndRequest(R request, Object input) {
       checkArgument(checkNotNull(input, "input") instanceof S3Object, "this binder is only valid for S3Object!, not %s", input);
       checkNotNull(request, "request");
+   }
 
-      S3Object s3Object = S3Object.class.cast(input);
+   private void validateS3Object(S3Object s3Object) {
       checkArgument(s3Object.getMetadata().getKey() != null, "s3Object.getMetadata().getKey() must be set!");
       checkArgument(s3Object.getPayload().getContentMetadata().getContentLength() != null,
             "contentLength must be set, streaming not supported");
       checkArgument(s3Object.getPayload().getContentMetadata().getContentLength() <= 5L * 1024 * 1024 * 1024,
             "maximum size for put object is 5GB");
+   }
 
-      StorageClass storageClass = s3Object.getMetadata().getStorageClass();
-      if (storageClass != StorageClass.STANDARD) {
-         request = (R) request.toBuilder()
-               .replaceHeader("x-amz-storage-class", storageClass.toString())
-               .build();
-      }
+   private boolean isNonStandardStorageClass(S3Object s3Object) {
+      return s3Object.getMetadata().getStorageClass() != StorageClass.STANDARD;
+   }
 
-      request = metadataPrefixer.bindToRequest(request, s3Object.getMetadata().getUserMetadata());
-
-      return request;
+   private <R extends HttpRequest> R addStorageClassHeader(R request, StorageClass storageClass) {
+      return (R) request.toBuilder()
+            .replaceHeader("x-amz-storage-class", storageClass.toString())
+            .build();
    }
 }
