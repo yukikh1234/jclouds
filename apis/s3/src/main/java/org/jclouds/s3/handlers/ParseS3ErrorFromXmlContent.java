@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.handlers;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -58,43 +43,59 @@ public class ParseS3ErrorFromXmlContent extends ParseAWSErrorFromXmlContent {
 
    protected Exception refineException(HttpCommand command, HttpResponse response, Exception exception, AWSError error,
             String message) {
-      switch (response.getStatusCode()) {
-         case 404:
-            if (!command.getCurrentRequest().getMethod().equals("DELETE")) {
-               // TODO: parse NoSuchBucket and NoSuchKey from error?
-               // If we have a payload/bucket/container that is not all lowercase, vhost-style URLs are not an option
-               // and must be automatically converted to their path-based equivalent.  This should only be possible for
-               // AWS-S3 since it is the only S3 implementation configured to allow uppercase payload/bucket/container
-               // names.
-               //
-               // http://code.google.com/p/jclouds/issues/detail?id=992
-               URI defaultS3Endpoint = URI.create(providerMetadata.getApiMetadata().getDefaultEndpoint().get());
-               URI requestEndpoint = command.getCurrentRequest().getEndpoint();
-               boolean wasPathBasedRequest = requestEndpoint.getHost().contains(defaultS3Endpoint.getHost()) &&
-                     requestEndpoint.getHost().equals(defaultS3Endpoint.getHost());
-
-               exception = new ResourceNotFoundException(message, exception);
-               if (isVhostStyle && !wasPathBasedRequest) {
-                  String container = command.getCurrentRequest().getEndpoint().getHost();
-                  String key = command.getCurrentRequest().getEndpoint().getPath();
-                  if (key == null || key.equals("/"))
-                     exception = new ContainerNotFoundException(container, message);
-                  else
-                     exception = new KeyNotFoundException(container, key, message);
-               } else if (command.getCurrentRequest().getEndpoint().getPath()
-                        .indexOf(servicePath.equals("/") ? "/" : servicePath + "/") == 0) {
-                  String path = command.getCurrentRequest().getEndpoint().getPath().substring(servicePath.length());
-                  List<String> parts = newArrayList(Splitter.on('/').omitEmptyStrings().split(path));
-                  if (parts.size() == 1) {
-                     exception = new ContainerNotFoundException(parts.get(0), message);
-                  } else if (parts.size() > 1) {
-                     exception = new KeyNotFoundException(parts.remove(0), Joiner.on('/').join(parts), message);
-                  }
-               }
-            }
-            return exception;
-         default:
-            return super.refineException(command, response, exception, error, message);
+      if (response.getStatusCode() == 404) {
+         if (!command.getCurrentRequest().getMethod().equals("DELETE")) {
+            exception = handleNotFound(command, exception, message);
+         }
+         return exception;
       }
+      return super.refineException(command, response, exception, error, message);
+   }
+
+   private Exception handleNotFound(HttpCommand command, Exception exception, String message) {
+      URI defaultS3Endpoint = URI.create(providerMetadata.getApiMetadata().getDefaultEndpoint().get());
+      URI requestEndpoint = command.getCurrentRequest().getEndpoint();
+      boolean wasPathBasedRequest = isPathBasedRequest(defaultS3Endpoint, requestEndpoint);
+
+      if (isVhostStyle && !wasPathBasedRequest) {
+         exception = handleVhostStyleNotFound(command, message);
+      } else if (isPathBasedRequest(command)) {
+         exception = handlePathBasedRequestNotFound(command, message);
+      } else {
+         exception = new ResourceNotFoundException(message, exception);
+      }
+      return exception;
+   }
+
+   private boolean isPathBasedRequest(URI defaultS3Endpoint, URI requestEndpoint) {
+      return requestEndpoint.getHost().contains(defaultS3Endpoint.getHost()) &&
+             requestEndpoint.getHost().equals(defaultS3Endpoint.getHost());
+   }
+
+   private boolean isPathBasedRequest(HttpCommand command) {
+      return command.getCurrentRequest().getEndpoint().getPath()
+             .indexOf(servicePath.equals("/") ? "/" : servicePath + "/") == 0;
+   }
+
+   private Exception handleVhostStyleNotFound(HttpCommand command, String message) {
+      String container = command.getCurrentRequest().getEndpoint().getHost();
+      String key = command.getCurrentRequest().getEndpoint().getPath();
+      if (key == null || key.equals("/")) {
+         return new ContainerNotFoundException(container, message);
+      } else {
+         return new KeyNotFoundException(container, key, message);
+      }
+   }
+
+   private Exception handlePathBasedRequestNotFound(HttpCommand command, String message) {
+      String path = command.getCurrentRequest().getEndpoint().getPath().substring(servicePath.length());
+      List<String> parts = newArrayList(Splitter.on('/').omitEmptyStrings().split(path));
+
+      if (parts.size() == 1) {
+         return new ContainerNotFoundException(parts.get(0), message);
+      } else if (parts.size() > 1) {
+         return new KeyNotFoundException(parts.remove(0), Joiner.on('/').join(parts), message);
+      }
+      return new ResourceNotFoundException(message);
    }
 }
