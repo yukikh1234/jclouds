@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -38,20 +39,33 @@ public class ObjectToBlobMetadata implements Function<ObjectMetadata, MutableBlo
    }
 
    public MutableBlobMetadata apply(ObjectMetadata from) {
-      if (from == null)
+      if (from == null) {
          return null;
+      }
       MutableBlobMetadata to = new MutableBlobMetadataImpl();
+      copyContentMetadata(from, to);
+      setBasicProperties(from, to);
+      setAdvancedProperties(from, to);
+      return to;
+   }
+
+   private void copyContentMetadata(ObjectMetadata from, MutableBlobMetadata to) {
       HttpUtils.copy(from.getContentMetadata(), to.getContentMetadata());
+   }
+
+   private void setBasicProperties(ObjectMetadata from, MutableBlobMetadata to) {
       to.setUri(from.getUri());
       to.setContainer(from.getBucket());
       to.setETag(from.getETag());
       to.setName(from.getKey());
       to.setLastModified(from.getLastModified());
       to.setUserMetadata(from.getUserMetadata());
+   }
+
+   private void setAdvancedProperties(ObjectMetadata from, MutableBlobMetadata to) {
       to.setLocation(locationOfBucket.apply(from.getBucket()));
       to.setType(StorageType.BLOB);
       to.setSize(from.getContentMetadata().getContentLength());
       to.setTier((from.getStorageClass() == null ? ObjectMetadata.StorageClass.STANDARD : from.getStorageClass()).toTier());
-      return to;
    }
 }
