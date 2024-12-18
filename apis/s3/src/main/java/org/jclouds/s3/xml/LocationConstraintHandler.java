@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.xml;
 
 import static org.jclouds.util.SaxUtils.currentOrNull;
@@ -45,18 +30,23 @@ public class LocationConstraintHandler extends ParseSax.HandlerWithResult<String
       this.bucketToRegion = bucketToRegion;
    }
 
+   @Override
    public String getResult() {
       return region;
    }
 
-   public void endElement(String uri, String name, String qName) {
+   @Override
+   public void endElement(String uri, String localName, String qName) {
+      // Parse the region from the current text
       region = fromValue(currentOrNull(currentText));
+      // Update the cache with the parsed region
       bucketToRegion.put(bucket, Optional.fromNullable(region));
    }
 
    @Override
    public LocationConstraintHandler setContext(HttpRequest request) {
       super.setContext(request);
+      // Set the bucket name from the request context
       setBucket(GeneratedHttpRequest.class.cast(getRequest()).getInvocation().getArgs().get(0).toString());
       return this;
    }
@@ -66,18 +56,24 @@ public class LocationConstraintHandler extends ParseSax.HandlerWithResult<String
    }
 
    /**
-    * parses the value expected in xml documents from the S3 service.=
+    * Parses the value expected in XML documents from the S3 service.
     * <p/>
-    * {@code US_STANDARD} is returned as "" xml documents.
+    * {@code US_STANDARD} is returned as empty string in XML documents.
     */
-   public static String fromValue(String v) {
-      if (v == null || "".equals(v))
+   public static String fromValue(String value) {
+      if (value == null || value.isEmpty()) {
          return Region.US_STANDARD;
-      if ("EU".equals(v))
-         return "eu-west-1";
-      return v;
+      }
+      // Simplified conditional checks for region mapping
+      switch (value) {
+         case "EU":
+            return "eu-west-1";
+         default:
+            return value;
+      }
    }
 
+   @Override
    public void characters(char[] ch, int start, int length) {
       currentText.append(ch, start, length);
    }
