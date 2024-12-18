@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -29,25 +30,33 @@ import com.google.common.base.Function;
 
 @Singleton
 public class UploadIdFromHttpResponseViaRegex implements Function<HttpResponse, String> {
-   Pattern pattern = Pattern.compile("<UploadId>([\\S&&[^<]]+)</UploadId>");
+   private static final Pattern UPLOAD_ID_PATTERN = Pattern.compile("<UploadId>([\\S&&[^<]]+)</UploadId>");
    private final ReturnStringIf2xx returnStringIf200;
 
    @Inject
-   UploadIdFromHttpResponseViaRegex(ReturnStringIf2xx returnStringIf200) {
+   public UploadIdFromHttpResponseViaRegex(ReturnStringIf2xx returnStringIf200) {
       this.returnStringIf200 = returnStringIf200;
    }
 
    @Override
    public String apply(HttpResponse response) {
-      String value = null;
       String content = returnStringIf200.apply(response);
-      if (content != null) {
-         Matcher matcher = pattern.matcher(content);
-         if (matcher.find()) {
-            value = matcher.group(1);
-         }
-      }
-      return value;
+      return extractUploadId(content);
    }
 
+   /**
+    * Extracts the UploadId from the given content string using regex.
+    * 
+    * @param content the content string to search for an UploadId.
+    * @return the extracted UploadId or null if none is found.
+    */
+   private String extractUploadId(String content) {
+      if (content != null) {
+         Matcher matcher = UPLOAD_ID_PATTERN.matcher(content);
+         if (matcher.find()) {
+            return matcher.group(1);
+         }
+      }
+      return null;
+   }
 }
