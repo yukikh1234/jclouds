@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.fallbacks;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -43,22 +28,32 @@ public class FalseIfBucketAlreadyOwnedByYouOrOperationAbortedWhenBucketExists im
 
    @Override
    public Boolean createOrPropagate(Throwable t) throws Exception {
-      AWSResponseException exception = getFirstThrowableOfType(checkNotNull(t, "throwable"), AWSResponseException.class);
-      if (exception != null && exception.getError() != null && exception.getError().getCode() != null) {
+      AWSResponseException exception = getAWSErrorResponseException(t);
+      if (exception != null) {
          String code = exception.getError().getCode();
-         if (code.equals("BucketAlreadyOwnedByYou"))
-            return false;
-         else if (code.equals("OperationAborted") && bucket != null && client.bucketExists(bucket))
+         if (isBucketAlreadyOwnedByYou(code) || isOperationAbortedAndBucketExists(code))
             return false;
       }
       throw propagate(t);
    }
 
-   @Override
-   public FalseIfBucketAlreadyOwnedByYouOrOperationAbortedWhenBucketExists setContext(@Nullable HttpRequest request) {
-      if (request != null)
-         this.bucket = getBucketName(request);
-      return this;
+   private AWSResponseException getAWSErrorResponseException(Throwable t) {
+      return getFirstThrowableOfType(checkNotNull(t, "throwable"), AWSResponseException.class);
    }
 
+   private boolean isBucketAlreadyOwnedByYou(String code) {
+      return "BucketAlreadyOwnedByYou".equals(code);
+   }
+
+   private boolean isOperationAbortedAndBucketExists(String code) throws Exception {
+      return "OperationAborted".equals(code) && bucket != null && client.bucketExists(bucket);
+   }
+
+   @Override
+   public FalseIfBucketAlreadyOwnedByYouOrOperationAbortedWhenBucketExists setContext(@Nullable HttpRequest request) {
+      if (request != null) {
+         this.bucket = getBucketName(request);
+      }
+      return this;
+   }
 }
