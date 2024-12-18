@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -39,7 +40,9 @@ public class ISO8601Format implements Function<Object, String> {
 
    @Override
    public String apply(Object from) {
-      checkArgument(from instanceof Date, "this binder is only valid for Date!");
-      return dateService.iso8601SecondsDateFormat(Date.class.cast(from));
+      if (!(from instanceof Date)) {
+         throw new IllegalArgumentException("this binder is only valid for Date!");
+      }
+      return dateService.iso8601SecondsDateFormat((Date) from);
    }
 }
