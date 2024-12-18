@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -39,27 +40,38 @@ import com.google.common.collect.ImmutableMultimap;
 public class GetMetricStatisticsBinder implements org.jclouds.rest.Binder {
 
    private final DateService dateService;
-   
+
    @Inject
    protected GetMetricStatisticsBinder(DateService dateService) {
       this.dateService = dateService;
    }
-   
+
    @SuppressWarnings("unchecked")
    @Override
    public <R extends HttpRequest> R bindToRequest(R request, Object payload) {
       GetMetricStatistics getRequest = GetMetricStatistics.class.cast(checkNotNull(payload,
                "GetMetricStatistics must be set!"));
-      int dimensionIndex = 1;
-      int statisticIndex = 1;
+
       ImmutableMultimap.Builder<String, String> formParameters = ImmutableMultimap.builder();
 
+      addDimensions(formParameters, getRequest);
+      addTimeParameters(formParameters, getRequest);
+      addStatistics(formParameters, getRequest);
+      addOptionalUnit(formParameters, getRequest);
+
+      return (R) request.toBuilder().replaceFormParams(formParameters.build()).build();
+   }
+
+   private void addDimensions(ImmutableMultimap.Builder<String, String> formParameters, GetMetricStatistics getRequest) {
+      int dimensionIndex = 1;
       for (Dimension dimension : getRequest.getDimensions()) {
          formParameters.put("Dimensions.member." + dimensionIndex + ".Name", dimension.getName());
          formParameters.put("Dimensions.member." + dimensionIndex + ".Value", dimension.getValue());
          dimensionIndex++;
       }
+   }
 
+   private void addTimeParameters(ImmutableMultimap.Builder<String, String> formParameters, GetMetricStatistics getRequest) {
       if (getRequest.getEndTime().isPresent()) {
          formParameters.put("EndTime", dateService.iso8601SecondsDateFormat(getRequest.getEndTime().get()));
       }
@@ -67,20 +79,21 @@ public class GetMetricStatisticsBinder implements org.jclouds.rest.Binder {
       formParameters.put("Namespace", getRequest.getNamespace());
       formParameters.put("Period", Integer.toString(getRequest.getPeriod()));
       if (getRequest.getStartTime().isPresent()) {
-         formParameters.put("StartTime", dateService.iso8601SecondsDateFormat(getRequest
-                  .getStartTime().get()));
+         formParameters.put("StartTime", dateService.iso8601SecondsDateFormat(getRequest.getStartTime().get()));
       }
-      
+   }
+
+   private void addStatistics(ImmutableMultimap.Builder<String, String> formParameters, GetMetricStatistics getRequest) {
+      int statisticIndex = 1;
       for (Statistics statistic : getRequest.getStatistics()) {
          formParameters.put("Statistics.member." + statisticIndex, statistic.toString());
          statisticIndex++;
       }
+   }
 
+   private void addOptionalUnit(ImmutableMultimap.Builder<String, String> formParameters, GetMetricStatistics getRequest) {
       if (getRequest.getUnit().isPresent()) {
          formParameters.put("Unit", getRequest.getUnit().get().toString());
       }
-
-      return (R) request.toBuilder().replaceFormParams(formParameters.build()).build();
    }
-
 }
