@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -39,6 +40,7 @@ import com.google.common.base.Throwables;
 
 @Singleton
 public class BindACLToXMLPayload implements Binder {
+
    @Override
    public <R extends HttpRequest> R bindToRequest(R request, Object payload) {
       AccessControlList from = (AccessControlList) payload;
@@ -47,9 +49,14 @@ public class BindACLToXMLPayload implements Binder {
          request.getPayload().getContentMetadata().setContentType(MediaType.TEXT_XML);
          return request;
       } catch (Exception e) {
-         Throwables.propagateIfPossible(e);
-         throw new RuntimeException("error transforming acl: " + from, e);
+         handleException(e, from);
+         return request; // This line will never be reached due to exception propagation, but keeps the method contract intact.
       }
+   }
+
+   private void handleException(Exception e, AccessControlList from) {
+      Throwables.propagateIfPossible(e);
+      throw new RuntimeException("error transforming acl: " + from, e);
    }
 
    protected String generatePayload(AccessControlList acl)
@@ -57,6 +64,16 @@ public class BindACLToXMLPayload implements Binder {
       Document document = createDocument();
       Element rootNode = elem(document, "AccessControlPolicy", document);
       rootNode.setAttribute("xmlns", S3Constants.S3_REST_API_XML_NAMESPACE);
+      
+      addOwnerElement(acl, document, rootNode);
+      
+      addGrants(elem(rootNode, "AccessControlList", document),
+                acl.getGrants(),
+                document);
+      return asString(document);
+   }
+
+   private void addOwnerElement(AccessControlList acl, Document document, Element rootNode) {
       if (acl.getOwner() != null) {
          Element ownerNode = elem(rootNode, "Owner", document);
          elemWithText(ownerNode, "ID", acl.getOwner().getId(), document);
@@ -65,9 +82,5 @@ public class BindACLToXMLPayload implements Binder {
             elemWithText(ownerNode, "DisplayName", displayName, document);
          }
       }
-      addGrants(elem(rootNode, "AccessControlList", document),
-                acl.getGrants(),
-                document);
-      return asString(document);
    }
 }
