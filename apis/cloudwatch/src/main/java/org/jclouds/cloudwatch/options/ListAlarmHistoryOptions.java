@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.cloudwatch.options;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -37,6 +22,10 @@ public class ListAlarmHistoryOptions extends BaseHttpRequestOptions {
 
    private static final DateService dateService = new SimpleDateFormatDateService();
 
+   private void putFormParameter(String key, Object value) {
+      formParameters.put(key, String.valueOf(value));
+   }
+
    /**
     * The name of the alarm you want to filter against.
     *
@@ -47,7 +36,7 @@ public class ListAlarmHistoryOptions extends BaseHttpRequestOptions {
    public ListAlarmHistoryOptions alarmName(String alarmName) {
       checkNotNull(alarmName, "alarmName");
       checkArgument(alarmName.length() <= 255, "alarmName must be between 1 and 255 characters in length");
-      formParameters.put("AlarmName", alarmName);
+      putFormParameter("AlarmName", alarmName);
       return this;
    }
 
@@ -59,7 +48,7 @@ public class ListAlarmHistoryOptions extends BaseHttpRequestOptions {
     * @return this {@code ListAlarmHistoryOptions} object
     */
    public ListAlarmHistoryOptions endDate(Date endDate) {
-      formParameters.put("EndDate", dateService.iso8601DateFormat(checkNotNull(endDate, "endDate")));
+      putFormParameter("EndDate", dateService.iso8601DateFormat(checkNotNull(endDate, "endDate")));
       return this;
    }
 
@@ -73,7 +62,7 @@ public class ListAlarmHistoryOptions extends BaseHttpRequestOptions {
    public ListAlarmHistoryOptions historyItemType(HistoryItemType historyItemType) {
       checkNotNull(historyItemType, "historyItemType");
       checkArgument(historyItemType != HistoryItemType.UNRECOGNIZED, "historyItemType unrecognized");
-      formParameters.put("HistoryItemType", historyItemType.toString());
+      putFormParameter("HistoryItemType", historyItemType);
       return this;
    }
 
@@ -85,7 +74,7 @@ public class ListAlarmHistoryOptions extends BaseHttpRequestOptions {
     * @return this {@code ListAlarmHistoryOptions} object
     */
    public ListAlarmHistoryOptions maxRecords(int maxRecords) {
-      formParameters.put("MaxRecords", String.valueOf(maxRecords));
+      putFormParameter("MaxRecords", maxRecords);
       return this;
    }
 
@@ -97,7 +86,7 @@ public class ListAlarmHistoryOptions extends BaseHttpRequestOptions {
     * @return this {@code ListAlarmHistoryOptions} object
     */
    public ListAlarmHistoryOptions startDate(Date startDate) {
-      formParameters.put("StartDate", dateService.iso8601DateFormat(checkNotNull(startDate, "startDate")));
+      putFormParameter("StartDate", dateService.iso8601DateFormat(checkNotNull(startDate, "startDate")));
       return this;
    }
 
