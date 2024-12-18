@@ -1,10 +1,11 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * (the "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -40,18 +41,25 @@ public class ETagFromHttpResponseViaRegex implements Function<HttpResponse, Stri
 
    @Override
    public String apply(HttpResponse response) {
-      String value = null;
       String content = returnStringIf200.apply(response);
-      if (content != null) {
-         Matcher matcher = PATTERN.matcher(content);
-         if (matcher.find()) {
-            value = matcher.group(1);
-            if (value.indexOf(ESCAPED_QUOTE) != -1) {
-               value = value.replace(ESCAPED_QUOTE, "\"");
-            }
-         }
+      if (content == null) {
+         return null;
+      }
+      return extractETag(content);
+   }
+
+   private String extractETag(String content) {
+      Matcher matcher = PATTERN.matcher(content);
+      if (!matcher.find()) {
+         return null;
+      }
+      return replaceEscapedQuote(matcher.group(1));
+   }
+
+   private String replaceEscapedQuote(String value) {
+      if (value.contains(ESCAPED_QUOTE)) {
+         return value.replace(ESCAPED_QUOTE, "\"");
       }
       return value;
    }
-
 }
