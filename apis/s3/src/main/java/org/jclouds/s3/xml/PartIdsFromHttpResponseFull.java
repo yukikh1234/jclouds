@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.xml;
 
 import static org.jclouds.util.SaxUtils.currentOrNull;
@@ -30,15 +15,9 @@ import org.jclouds.s3.domain.ListMultipartUploadResponse;
 import com.google.common.annotations.Beta;
 import com.google.common.collect.ImmutableMap;
 
-/**
- * Parses the following XML document:
- * <p/>
- * ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01"
- */
 @Beta
 public final class PartIdsFromHttpResponseFull extends ParseSax.HandlerWithResult<Map<Integer, ListMultipartUploadResponse>> {
    private final StringBuilder currentText = new StringBuilder();
-
    private final DateService dateParser;
 
    private int partNumber;
@@ -58,22 +37,47 @@ public final class PartIdsFromHttpResponseFull extends ParseSax.HandlerWithResul
    }
 
    public void endElement(String uri, String name, String qName) {
-      if (qName.equals("PartNumber")) {
-         partNumber = Integer.parseInt(currentText.toString().trim());
-      } else if (qName.equals("LastModified")) {
-         lastModfied = dateParser.iso8601DateOrSecondsDateParse(currentOrNull(currentText));
-      } else if (qName.equals("ETag")) {
-         eTag = currentText.toString().trim();
-      } else if (qName.equals("Size")) {
-         size = Long.parseLong(currentText.toString().trim());
-      } else if (qName.equals("Part")) {
-         parts.put(partNumber, ListMultipartUploadResponse.create(partNumber, lastModfied, eTag, size));
+      switch (qName) {
+         case "PartNumber":
+            handlePartNumber();
+            break;
+         case "LastModified":
+            handleLastModified();
+            break;
+         case "ETag":
+            handleETag();
+            break;
+         case "Size":
+            handleSize();
+            break;
+         case "Part":
+            handlePart();
+            break;
       }
       currentText.setLength(0);
+   }
+
+   private void handlePartNumber() {
+      partNumber = Integer.parseInt(currentText.toString().trim());
+   }
+
+   private void handleLastModified() {
+      lastModfied = dateParser.iso8601DateOrSecondsDateParse(currentOrNull(currentText));
+   }
+
+   private void handleETag() {
+      eTag = currentText.toString().trim();
+   }
+
+   private void handleSize() {
+      size = Long.parseLong(currentText.toString().trim());
+   }
+
+   private void handlePart() {
+      parts.put(partNumber, ListMultipartUploadResponse.create(partNumber, lastModfied, eTag, size));
    }
 
    public void characters(char[] ch, int start, int length) {
       currentText.append(ch, start, length);
    }
 }
-
