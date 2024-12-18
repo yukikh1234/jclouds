@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.domain;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -54,13 +39,11 @@ public class DeleteResult extends ForwardingSet<String> {
 
       @Override
       public boolean equals(Object o) {
-         if (this == o) return true;
-         if (!(o instanceof Error)) return false;
+         return this == o || (o instanceof Error && equalsHelper((Error) o));
+      }
 
-         Error that = (Error) o;
-
-         return Objects.equal(code, that.code)
-            && Objects.equal(message, that.message);
+      private boolean equalsHelper(Error that) {
+         return Objects.equal(code, that.code) && Objects.equal(message, that.message);
       }
 
       @Override
@@ -85,8 +68,8 @@ public class DeleteResult extends ForwardingSet<String> {
 
    public static class Builder {
 
-      private ImmutableSet.Builder<String> deleted = ImmutableSet.builder();
-      private ImmutableMap.Builder<String, Error> errors = ImmutableMap.builder();
+      private final ImmutableSet.Builder<String> deleted = ImmutableSet.builder();
+      private final ImmutableMap.Builder<String, Error> errors = ImmutableMap.builder();
 
       /**
        * @see DeleteResult#getErrors
@@ -100,7 +83,7 @@ public class DeleteResult extends ForwardingSet<String> {
        * @see DeleteResult#getErrors
        */
       public Builder errors(Map<String, Error> errors) {
-         this.errors = ImmutableMap.<String, Error>builder().putAll(errors);
+         this.errors.putAll(errors);
          return this;
       }
 
@@ -108,7 +91,7 @@ public class DeleteResult extends ForwardingSet<String> {
        * @see DeleteResult#getDeleted
        */
       public Builder deleted(Iterable<String> deleted) {
-         this.deleted = ImmutableSet.<String>builder().addAll(deleted);
+         this.deleted.addAll(deleted);
          return this;
       }
 
@@ -123,8 +106,8 @@ public class DeleteResult extends ForwardingSet<String> {
       /**
        * @see DeleteResult#getDeleted
        */
-      public Builder addAll(Iterable<String> key) {
-         this.deleted.addAll(key);
+      public Builder addAll(Iterable<String> keys) {
+         this.deleted.addAll(keys);
          return this;
       }
 
@@ -166,13 +149,11 @@ public class DeleteResult extends ForwardingSet<String> {
 
    @Override
    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof DeleteResult)) return false;
+      return this == o || (o instanceof DeleteResult && equalsHelper((DeleteResult) o));
+   }
 
-      DeleteResult that = (DeleteResult) o;
-
-      return Objects.equal(errors, that.errors)
-         && Objects.equal(deleted, that.deleted);
+   private boolean equalsHelper(DeleteResult that) {
+      return Objects.equal(errors, that.errors) && Objects.equal(deleted, that.deleted);
    }
 
    @Override
