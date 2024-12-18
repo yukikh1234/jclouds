@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -47,6 +48,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
 import com.google.common.util.concurrent.UncheckedExecutionException;
+
 @Singleton
 public class BYONComputeServiceAdapter implements JCloudsNativeComputeServiceAdapter {
    private final Supplier<LoadingCache<String, Node>> nodes;
@@ -55,7 +57,7 @@ public class BYONComputeServiceAdapter implements JCloudsNativeComputeServiceAda
 
    @Inject
    public BYONComputeServiceAdapter(Supplier<LoadingCache<String, Node>> nodes, NodeToNodeMetadata converter,
-            JustProvider locationSupplier) {
+                                    JustProvider locationSupplier) {
       this.nodes = checkNotNull(nodes, "nodes");
       this.converter = checkNotNull(converter, "converter");
       this.locationSupplier = checkNotNull(locationSupplier, "locationSupplier");
@@ -63,17 +65,17 @@ public class BYONComputeServiceAdapter implements JCloudsNativeComputeServiceAda
 
    @Override
    public NodeWithInitialCredentials createNodeWithGroupEncodedIntoName(String group, String name, Template template) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Method not implemented yet.");
    }
 
    @Override
    public Iterable<Hardware> listHardwareProfiles() {
-      return ImmutableSet.<Hardware> of();
+      return ImmutableSet.of();
    }
 
    @Override
    public Iterable<Image> listImages() {
-      return ImmutableSet.<Image> of();
+      return ImmutableSet.of();
    }
 
    @Override
@@ -88,60 +90,66 @@ public class BYONComputeServiceAdapter implements JCloudsNativeComputeServiceAda
 
    @Override
    public Iterable<Location> listLocations() {
+      return buildLocations();
+   }
+
+   private Iterable<Location> buildLocations() {
       Builder<Location> locations = ImmutableSet.builder();
       Location provider = getOnlyElement(locationSupplier.get());
-      Set<String> zones = ImmutableSet.copyOf(filter(transform(nodes.get().asMap().values(),
-               new Function<Node, String>() {
-
-                  @Override
-                  public String apply(Node arg0) {
-                     return arg0.getLocationId();
-                  }
-               }), Predicates.notNull()));
-      if (zones.isEmpty())
-         return locations.add(provider).build();
-      else
-         for (String zone : zones) {
-            locations.add(new LocationBuilder().scope(LocationScope.ZONE).id(zone).description(zone).parent(provider)
-                     .build());
-         }
+      Set<String> zones = getZones();
+      if (zones.isEmpty()) {
+         locations.add(provider);
+      } else {
+         zones.forEach(zone -> locations.add(createLocation(zone, provider)));
+      }
       return locations.build();
+   }
+
+   private Set<String> getZones() {
+      return ImmutableSet.copyOf(filter(transform(nodes.get().asMap().values(),
+            Node::getLocationId), Predicates.notNull()));
+   }
+
+   private Location createLocation(String zone, Location provider) {
+      return new LocationBuilder().scope(LocationScope.ZONE).id(zone).description(zone).parent(provider).build();
    }
 
    @Override
    public NodeMetadata getNode(String id) {
+      return getNodeMetadata(id);
+   }
 
-      Node node = null;
+   private NodeMetadata getNodeMetadata(String id) {
       try {
-         node = nodes.get().getUnchecked(id);
+         Node node = nodes.get().getUnchecked(id);
+         return node != null ? converter.apply(node) : null;
       } catch (UncheckedExecutionException e) {
-
+         return null;
       }
-      return node != null ? converter.apply(node) : null;
    }
 
    @Override
    public Image getImage(final String id) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Method not implemented yet.");
    }
 
    @Override
    public void destroyNode(final String id) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Method not implemented yet.");
    }
 
    @Override
    public void rebootNode(String id) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Method not implemented yet.");
    }
 
    @Override
    public void resumeNode(String id) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Method not implemented yet.");
    }
 
    @Override
    public void suspendNode(String id) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("Method not implemented yet.");
    }
 }
