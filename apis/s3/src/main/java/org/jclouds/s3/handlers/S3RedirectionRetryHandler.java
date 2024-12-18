@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.handlers;
 
 import static org.jclouds.http.HttpUtils.closeClientButKeepContentStream;
@@ -48,27 +33,43 @@ public class S3RedirectionRetryHandler extends RedirectionRetryHandler {
 
    @Override
    public boolean shouldRetryRequest(HttpCommand command, HttpResponse response) {
-      if (response.getFirstHeaderOrNull(HttpHeaders.LOCATION) == null
-            && (response.getStatusCode() == 301 || response.getStatusCode() == 307)) {
-         command.incrementRedirectCount();
-         closeClientButKeepContentStream(response);
-         AWSError error = utils.parseAWSErrorFromContent(command.getCurrentRequest(), response);
-         String host = error.getDetails().get("Endpoint");
-         if (host != null) {
-            if (host.equals(command.getCurrentRequest().getEndpoint().getHost())) {
-               // must be an amazon error related to
-               // http://developer.amazonwebservices.com/connect/thread.jspa?messageID=72287&#72287
-               return backoffHandler.shouldRetryRequest(command, response);
-            } else {
-               URI newHost = uriBuilder(command.getCurrentRequest().getEndpoint()).host(host).build();
-               command.setCurrentRequest(command.getCurrentRequest().toBuilder().endpoint(newHost).build());
-            }
-            return true;
-         } else {
-            return false;
-         }
+      if (isRedirectWithoutLocation(response)) {
+         handleRedirect(command, response);
+         return true;
       } else {
          return super.shouldRetryRequest(command, response);
       }
+   }
+
+   private boolean isRedirectWithoutLocation(HttpResponse response) {
+      return response.getFirstHeaderOrNull(HttpHeaders.LOCATION) == null
+            && (response.getStatusCode() == 301 || response.getStatusCode() == 307);
+   }
+
+   private void handleRedirect(HttpCommand command, HttpResponse response) {
+      command.incrementRedirectCount();
+      closeClientButKeepContentStream(response);
+      AWSError error = utils.parseAWSErrorFromContent(command.getCurrentRequest(), response);
+      String host = error.getDetails().get("Endpoint");
+      if (host != null) {
+         processHost(command, host, response);
+      }
+   }
+
+   private void processHost(HttpCommand command, String host, HttpResponse response) {
+      if (isSameHost(command, host)) {
+         backoffHandler.shouldRetryRequest(command, response);
+      } else {
+         updateRequestEndpoint(command, host);
+      }
+   }
+
+   private boolean isSameHost(HttpCommand command, String host) {
+      return host.equals(command.getCurrentRequest().getEndpoint().getHost());
+   }
+
+   private void updateRequestEndpoint(HttpCommand command, String host) {
+      URI newHost = uriBuilder(command.getCurrentRequest().getEndpoint()).host(host).build();
+      command.setCurrentRequest(command.getCurrentRequest().toBuilder().endpoint(newHost).build());
    }
 }
