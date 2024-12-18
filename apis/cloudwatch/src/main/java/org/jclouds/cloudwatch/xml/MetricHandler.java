@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.cloudwatch.xml;
 
 import com.google.common.collect.Sets;
@@ -27,9 +12,6 @@ import org.xml.sax.SAXException;
 
 import java.util.Set;
 
-/**
- * @see <a href="http://docs.amazonwebservices.com/AmazonCloudWatch/latest/APIReference/API_Metric.html" />
- */
 public class MetricHandler extends ParseSax.HandlerForGeneratedRequestWithResult<Metric> {
 
    private final DimensionHandler dimensionHandler;
@@ -45,31 +27,26 @@ public class MetricHandler extends ParseSax.HandlerForGeneratedRequestWithResult
       this.dimensionHandler = dimensionHandler;
    }
 
-    public boolean inDimensions() {
-        return inDimensions;
-    }
+   public boolean inDimensions() {
+      return inDimensions;
+   }
 
-   /**
-    * {@inheritDoc}
-    */
    @Override
    public Metric getResult() {
       Metric metric = new Metric(metricName, namespace, dimensions);
-
-      // Reset since this handler is created once but produces N results
-      dimensions = Sets.newLinkedHashSet();
-      metricName = null;
-      namespace = null;
-
+      resetState();
       return metric;
    }
 
-   /**
-    * {@inheritDoc}
-    */
+   private void resetState() {
+      dimensions = Sets.newLinkedHashSet();
+      metricName = null;
+      namespace = null;
+   }
+
    @Override
    public void startElement(String url, String name, String qName, Attributes attributes) throws SAXException {
-      if (!inDimensions && SaxUtils.equalsOrSuffix(qName, "member")) {
+      if (shouldEnterDimensions(qName)) {
          inDimensions = true;
       }
       if (inDimensions) {
@@ -77,31 +54,38 @@ public class MetricHandler extends ParseSax.HandlerForGeneratedRequestWithResult
       }
    }
 
-   /**
-    * {@inheritDoc}
-    */
+   private boolean shouldEnterDimensions(String qName) {
+      return !inDimensions && SaxUtils.equalsOrSuffix(qName, "member");
+   }
+
    @Override
    public void endElement(String uri, String name, String qName) throws SAXException {
       if (inDimensions) {
-         if (qName.equals("Dimensions")) {
-            inDimensions = false;
-         } else if (qName.equals("member")) {
-            dimensions.add(dimensionHandler.getResult());
-         } else {
-            dimensionHandler.endElement(uri, name, qName);
-         }
-      } else if (qName.equals("MetricName")) {
+         handleEndElementInDimensions(uri, name, qName);
+      } else {
+         handleEndElementOutsideDimensions(qName);
+      }
+      currentText.setLength(0);
+   }
+
+   private void handleEndElementInDimensions(String uri, String name, String qName) throws SAXException {
+      if (qName.equals("Dimensions")) {
+         inDimensions = false;
+      } else if (qName.equals("member")) {
+         dimensions.add(dimensionHandler.getResult());
+      } else {
+         dimensionHandler.endElement(uri, name, qName);
+      }
+   }
+
+   private void handleEndElementOutsideDimensions(String qName) {
+      if (qName.equals("MetricName")) {
          metricName = SaxUtils.currentOrNull(currentText);
       } else if (qName.equals("Namespace")) {
          namespace = SaxUtils.currentOrNull(currentText);
       }
-
-      currentText.setLength(0);
    }
 
-   /**
-    * {@inheritDoc}
-    */
    @Override
    public void characters(char[] ch, int start, int length) {
       if (inDimensions) {
@@ -110,5 +94,4 @@ public class MetricHandler extends ParseSax.HandlerForGeneratedRequestWithResult
          currentText.append(ch, start, length);
       }
    }
-
 }
