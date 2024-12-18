@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.binders;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -54,38 +39,42 @@ public class BindObjectMetadataToRequest implements Binder {
       request = metadataPrefixer.bindToRequest(request, md.getUserMetadata());
 
       Builder<String, String> headers = ImmutableMultimap.builder();
-      if (md.getContentMetadata().getCacheControl() != null) {
-         headers.put(HttpHeaders.CACHE_CONTROL, md.getContentMetadata().getCacheControl());
-      }
+      addHeaderIfNotNull(headers, HttpHeaders.CACHE_CONTROL, md.getContentMetadata().getCacheControl());
+      addHeaderIfNotNull(headers, "Content-Disposition", md.getContentMetadata().getContentDisposition());
+      addHeaderIfNotNull(headers, "Content-Encoding", md.getContentMetadata().getContentEncoding());
+      addHeaderIfNotNull(headers, HttpHeaders.CONTENT_LANGUAGE, md.getContentMetadata().getContentLanguage());
+      addContentTypeHeader(headers, md);
+      addContentMD5Header(headers, md);
+      addStorageClassHeader(headers, md);
 
-      if (md.getContentMetadata().getContentDisposition() != null) {
-         headers.put("Content-Disposition", md.getContentMetadata().getContentDisposition());
-      }
+      return (R) request.toBuilder().replaceHeaders(headers.build()).build();
+   }
 
-      if (md.getContentMetadata().getContentEncoding() != null) {
-         headers.put("Content-Encoding", md.getContentMetadata().getContentEncoding());
+   private void addHeaderIfNotNull(Builder<String, String> headers, String headerName, String headerValue) {
+      if (headerValue != null) {
+         headers.put(headerName, headerValue);
       }
+   }
 
-      String contentLanguage = md.getContentMetadata().getContentLanguage();
-      if (contentLanguage != null) {
-         headers.put(HttpHeaders.CONTENT_LANGUAGE, contentLanguage);
-      }
-
-      if (md.getContentMetadata().getContentType() != null) {
-         headers.put(HttpHeaders.CONTENT_TYPE, md.getContentMetadata().getContentType());
+   private void addContentTypeHeader(Builder<String, String> headers, ObjectMetadata md) {
+      String contentType = md.getContentMetadata().getContentType();
+      if (contentType != null) {
+         headers.put(HttpHeaders.CONTENT_TYPE, contentType);
       } else {
          headers.put(HttpHeaders.CONTENT_TYPE, "binary/octet-stream");
       }
+   }
 
+   private void addContentMD5Header(Builder<String, String> headers, ObjectMetadata md) {
       if (md.getContentMetadata().getContentMD5() != null) {
          headers.put("Content-MD5", base64().encode(md.getContentMetadata().getContentMD5()));
       }
+   }
 
+   private void addStorageClassHeader(Builder<String, String> headers, ObjectMetadata md) {
       ObjectMetadata.StorageClass storageClass = md.getStorageClass();
       if (storageClass != ObjectMetadata.StorageClass.STANDARD) {
          headers.put("x-amz-storage-class", storageClass.toString());
       }
-
-      return (R) request.toBuilder().replaceHeaders(headers.build()).build();
    }
 }
