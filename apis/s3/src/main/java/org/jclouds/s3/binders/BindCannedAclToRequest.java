@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -24,18 +25,25 @@ import org.jclouds.rest.Binder;
 import org.jclouds.s3.domain.CannedAccessPolicy;
 
 public class BindCannedAclToRequest implements Binder {
-   public BindCannedAclToRequest() {
-   }
+    public BindCannedAclToRequest() {
+    }
 
-   @SuppressWarnings("unchecked")
-   @Override
-   public <R extends HttpRequest> R bindToRequest(R request, Object input) {
-      checkArgument(checkNotNull(input, "input") instanceof CannedAccessPolicy, "this binder is only valid for CannedAccessPolicy!, not %s", input);
-      checkNotNull(request, "request");
+    @SuppressWarnings("unchecked")
+    @Override
+    public <R extends HttpRequest> R bindToRequest(R request, Object input) {
+        validateInputAndRequest(request, input);
+        CannedAccessPolicy policy = (CannedAccessPolicy) input;
+        return updateRequestWithPolicy(request, policy);
+    }
 
-      CannedAccessPolicy policy = (CannedAccessPolicy) input;
+    private void validateInputAndRequest(HttpRequest request, Object input) {
+        checkArgument(checkNotNull(input, "input") instanceof CannedAccessPolicy,
+                "this binder is only valid for CannedAccessPolicy!, not %s", input);
+        checkNotNull(request, "request");
+    }
 
-      request = (R) request.toBuilder().replaceHeader("x-amz-acl", policy.toString()).build();
-      return request;
-   }
+    @SuppressWarnings("unchecked")
+    private <R extends HttpRequest> R updateRequestWithPolicy(R request, CannedAccessPolicy policy) {
+        return (R) request.toBuilder().replaceHeader("x-amz-acl", policy.toString()).build();
+    }
 }
