@@ -1,10 +1,11 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * (the "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -33,10 +34,9 @@ public final class S3Constants {
    public static final String PROPERTY_S3_VIRTUAL_HOST_BUCKETS = "jclouds.s3.virtual-host-buckets";
    public static final String PROPERTY_JCLOUDS_S3_CHUNKED_SIZE = "jclouds.s3.chunked.size";
    public static final String PROPERTY_SIGNER_VERSION = "jclouds.s3.signer-version";
-
    public static final String TEMPORARY_SIGNATURE_PARAM = "Signature";
 
    private S3Constants() {
-      throw new AssertionError("intentionally unimplemented");
+      // Prevent instantiation
    }
 }
