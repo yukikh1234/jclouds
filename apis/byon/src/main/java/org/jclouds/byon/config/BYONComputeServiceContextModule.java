@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -43,11 +44,21 @@ public class BYONComputeServiceContextModule extends JCloudsNativeComputeService
    @Override
    protected void configure() {
       super.configure();
+      bindFunctionURIToInputStream();
+      bindByteSourceToProvider();
+      installLocationsModule();
+   }
+   
+   private void bindFunctionURIToInputStream() {
       bind(new TypeLiteral<Function<URI, InputStream>>() {
       }).to(SupplyFromProviderURIOrNodesProperty.class);
+   }
+   
+   private void bindByteSourceToProvider() {
       bind(ByteSource.class).annotatedWith(Provider.class).to(SupplyFromProviderURIOrNodesProperty.class);
-      bind(new TypeLiteral<Function<URI, InputStream>>() {
-      }).to(SupplyFromProviderURIOrNodesProperty.class);
+   }
+   
+   private void installLocationsModule() {
       install(new LocationsFromComputeServiceAdapterModule<NodeMetadata, Hardware, Image, Location>() {
       });
    }
