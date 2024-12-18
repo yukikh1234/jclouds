@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.functions;
 
 import java.util.concurrent.ExecutionException;
@@ -46,14 +31,30 @@ public class GetRegionForBucket implements Function<String, Optional<String>> {
    @Override
    public Optional<String> apply(String bucket) {
       try {
-         return bucketToRegion.get(bucket);
+         return getRegionForBucket(bucket);
       } catch (ExecutionException e) {
-         logger.debug("error looking up region for bucket %s: %s", bucket, e);
+         handleExecutionException(bucket, e);
       } catch (UncheckedExecutionException e) {
-         logger.debug("error looking up region for bucket %s: %s", bucket, e);
+         handleUncheckedExecutionException(bucket, e);
       } catch (InvalidCacheLoadException e) {
-         logger.trace("bucket %s not found: %s", bucket, e);
+         handleInvalidCacheLoadException(bucket, e);
       }
       return Optional.absent();
+   }
+
+   private Optional<String> getRegionForBucket(String bucket) throws ExecutionException {
+      return bucketToRegion.get(bucket);
+   }
+
+   private void handleExecutionException(String bucket, ExecutionException e) {
+      logger.debug("error looking up region for bucket %s: %s", bucket, e);
+   }
+
+   private void handleUncheckedExecutionException(String bucket, UncheckedExecutionException e) {
+      logger.debug("error looking up region for bucket %s: %s", bucket, e);
+   }
+
+   private void handleInvalidCacheLoadException(String bucket, InvalidCacheLoadException e) {
+      logger.trace("bucket %s not found: %s", bucket, e);
    }
 }
