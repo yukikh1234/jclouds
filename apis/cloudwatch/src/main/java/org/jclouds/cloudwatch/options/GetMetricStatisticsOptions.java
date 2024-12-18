@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.cloudwatch.options;
 
 import com.google.common.collect.Multimap;
@@ -37,15 +22,18 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class GetMetricStatisticsOptions extends BaseHttpRequestOptions {
 
    private Set<Dimension> dimensions;
-   
+
    /**
-    * A dimension describing qualities of the metric.
+    * Adds a dimension describing qualities of the metric.
     *
     * @param dimension the dimension describing the qualities of the metric
     *
-    * @return this {@code Builder} object
+    * @return this {@code GetMetricStatisticsOptions} object
     */
-   public GetMetricStatisticsOptions dimension(Dimension dimension) {
+   public GetMetricStatisticsOptions addDimension(Dimension dimension) {
+      if (dimension == null) {
+         throw new NullPointerException("dimension cannot be null");
+      }
       if (dimensions == null) {
          dimensions = Sets.newLinkedHashSet();
       }
@@ -54,13 +42,16 @@ public class GetMetricStatisticsOptions extends BaseHttpRequestOptions {
    }
    
    /**
-    * A list of dimensions describing qualities of the metric.
+    * Sets a list of dimensions describing qualities of the metric.
     *
     * @param dimensions the dimensions describing the qualities of the metric
     *
-    * @return this {@code Builder} object
+    * @return this {@code GetMetricStatisticsOptions} object
     */
    public GetMetricStatisticsOptions dimensions(Set<Dimension> dimensions) {
+      if (dimensions == null) {
+         throw new NullPointerException("dimensions cannot be null");
+      }
       this.dimensions = dimensions;
       return this;
    }
@@ -104,11 +95,11 @@ public class GetMetricStatisticsOptions extends BaseHttpRequestOptions {
       }
       
       /**
-       * @see GetMetricStatisticsOptions#dimension
+       * @see GetMetricStatisticsOptions#addDimension
        */
-      public static GetMetricStatisticsOptions dimension(Dimension dimension) {
+      public static GetMetricStatisticsOptions addDimension(Dimension dimension) {
          GetMetricStatisticsOptions options = new GetMetricStatisticsOptions();
-         return options.dimension(dimension);
+         return options.addDimension(dimension);
       }
       
       /**
@@ -123,15 +114,18 @@ public class GetMetricStatisticsOptions extends BaseHttpRequestOptions {
    @Override
    public Multimap<String, String> buildFormParameters() {
       Multimap<String, String> formParameters = super.buildFormParameters();
-      int dimensionIndex = 1;
+      handleDimensions(formParameters);
+      return formParameters;
+   }
+
+   private void handleDimensions(Multimap<String, String> formParameters) {
       if (dimensions != null) {
+         int dimensionIndex = 1;
          for (Dimension dimension : dimensions) {
             formParameters.put("Dimensions.member." + dimensionIndex + ".Name", dimension.getName());
             formParameters.put("Dimensions.member." + dimensionIndex + ".Value", dimension.getValue());
             dimensionIndex++;
          }
       }
-      return formParameters;
    }
-
 }
