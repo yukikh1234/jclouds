@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -64,11 +65,15 @@ public class PutObjectOptions extends BaseHttpRequestOptions {
    @Override
    public Multimap<String, String> buildRequestHeaders() {
       checkState(headerTag != null, "headerTag should have been injected!");
-      ImmutableMultimap.Builder<String, String> returnVal = ImmutableMultimap.builder();
+      return buildHeadersWithCustomTag();
+   }
+
+   private Multimap<String, String> buildHeadersWithCustomTag() {
+      ImmutableMultimap.Builder<String, String> headersBuilder = ImmutableMultimap.builder();
       for (Entry<String, String> entry : headers.entries()) {
-         returnVal.put(entry.getKey().replace(DEFAULT_AMAZON_HEADERTAG, headerTag), entry.getValue());
+         headersBuilder.put(entry.getKey().replace(DEFAULT_AMAZON_HEADERTAG, headerTag), entry.getValue());
       }
-      return returnVal.build();
+      return headersBuilder.build();
    }
 
    /**
@@ -78,8 +83,9 @@ public class PutObjectOptions extends BaseHttpRequestOptions {
     */
    public PutObjectOptions withAcl(CannedAccessPolicy acl) {
       this.acl = checkNotNull(acl, "acl");
-      if (!acl.equals(CannedAccessPolicy.PRIVATE))
+      if (!acl.equals(CannedAccessPolicy.PRIVATE)) {
          this.replaceHeader(CANNED_ACL, acl.toString());
+      }
       return this;
    }
 
