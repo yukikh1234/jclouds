@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,6 +20,7 @@ package org.jclouds.s3.domain.internal;
 import java.net.URI;
 import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jclouds.io.ContentMetadata;
 import org.jclouds.io.payloads.BaseImmutableContentMetadata;
@@ -132,38 +134,23 @@ public class CopyObjectResult implements ObjectMetadata {
 
    @Override
    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((eTag == null) ? 0 : eTag.hashCode());
-      result = prime * result + ((lastModified == null) ? 0 : lastModified.hashCode());
-      return result;
+      return Objects.hash(eTag, lastModified);
    }
 
    @Override
    public boolean equals(Object obj) {
-      if (this == obj)
+      if (this == obj) {
          return true;
-      if (obj == null)
-         return false;
-      if (getClass() != obj.getClass())
-         return false;
-      CopyObjectResult other = (CopyObjectResult) obj;
-      if (eTag == null) {
-         if (other.eTag != null)
-            return false;
-      } else if (!eTag.equals(other.eTag))
-         return false;
-      if (lastModified == null) {
-         if (other.lastModified != null)
-            return false;
-      } else if (!lastModified.equals(other.lastModified))
-         return false;
-      return true;
+      }
+      if (obj instanceof CopyObjectResult) {
+         CopyObjectResult other = (CopyObjectResult) obj;
+         return Objects.equals(eTag, other.eTag) && Objects.equals(lastModified, other.lastModified);
+      }
+      return false;
    }
 
    @Override
    public String toString() {
       return String.format("[eTag=%s, lastModified=%s]", eTag, lastModified);
    }
-
 }
