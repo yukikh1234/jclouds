@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,34 +18,40 @@
 package org.jclouds.cloudwatch.domain;
 
 /**
- * Constants interface for the AWS AutoScaling dimensions and metric names as of 2012-04-24.
+ * Constants class for the AWS AutoScaling dimensions and metric names as of 2012-04-24.
  *
  * @see <a href="http://docs.amazonwebservices.com/AmazonCloudWatch/latest/DeveloperGuide/CW_Support_For_AWS.html#ec2-metricscollected" />
  */
 public final class EC2Constants {
 
-   public static class Dimension {
+    private EC2Constants() {
+        throw new AssertionError("intentionally unimplemented");
+    }
 
-      public static final String AUTO_SCALING_GROUP_NAME = "AutoScalingGroupName";
-      public static final String IMAGE_ID = "ImageId";
-      public static final String INSTANCE_ID = "InstanceId";
-      public static final String INSTANCE_TYPE = "InstanceType";
+    public static final class Dimension {
 
-   }
+        private Dimension() {
+            throw new AssertionError("intentionally unimplemented");
+        }
 
-   public static class MetricName {
+        public static final String AUTO_SCALING_GROUP_NAME = "AutoScalingGroupName";
+        public static final String IMAGE_ID = "ImageId";
+        public static final String INSTANCE_ID = "InstanceId";
+        public static final String INSTANCE_TYPE = "InstanceType";
+    }
 
-      public static final String CPU_UTILIZATION = "CPUUtilization";
-      public static final String DISK_READ_BYTES = "DiskReadBytes";
-      public static final String DISK_READ_OPS = "DiskReadOps";
-      public static final String DISK_WRITE_BYTES = "DiskWriteBytes";
-      public static final String DISK_WRITE_OPS = "DiskWriteOps";
-      public static final String NETWORK_IN = "NetworkIn";
-      public static final String NETWORK_OUT = "NetworkOut";
+    public static final class MetricName {
 
-   }
+        private MetricName() {
+            throw new AssertionError("intentionally unimplemented");
+        }
 
-   private EC2Constants() {
-      throw new AssertionError("intentionally unimplemented");
-   }
+        public static final String CPU_UTILIZATION = "CPUUtilization";
+        public static final String DISK_READ_BYTES = "DiskReadBytes";
+        public static final String DISK_READ_OPS = "DiskReadOps";
+        public static final String DISK_WRITE_BYTES = "DiskWriteBytes";
+        public static final String DISK_WRITE_OPS = "DiskWriteOps";
+        public static final String NETWORK_IN = "NetworkIn";
+        public static final String NETWORK_OUT = "NetworkOut";
+    }
 }
