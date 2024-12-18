@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.byon.suppliers;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -59,9 +44,10 @@ public class SupplyFromProviderURIOrNodesProperty extends ByteSource implements 
 
    @Override
    public InputStream openStream() {
-      if (nodes != null)
+      if (nodes != null) {
          return Strings2.toInputStream(nodes);
-      return apply(url.get());
+      }
+      return getStreamFromURI(url.get());
    }
 
    @Override
@@ -71,14 +57,23 @@ public class SupplyFromProviderURIOrNodesProperty extends ByteSource implements 
 
    @Override
    public InputStream apply(URI input) {
+      return getStreamFromURI(input);
+   }
+
+   private InputStream getStreamFromURI(URI uri) {
       try {
-         if (input.getScheme() != null && input.getScheme().equals("classpath"))
-            return getClass().getResourceAsStream(input.getPath());
-         return input.toURL().openStream();
+         if (uri.getScheme() != null && uri.getScheme().equals("classpath")) {
+            return getClass().getResourceAsStream(uri.getPath());
+         }
+         return uri.toURL().openStream();
       } catch (IOException e) {
-         logger.error(e, "URI could not be read: %s", url);
-         throw Throwables.propagate(e);
+         logErrorAndThrow(uri, e);
+         return null; // This line will never be reached, but is needed for compilation
       }
    }
 
+   private void logErrorAndThrow(URI uri, IOException e) {
+      logger.error(e, "URI could not be read: %s", uri);
+      throw Throwables.propagate(e);
+   }
 }
