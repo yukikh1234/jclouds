@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -35,104 +36,107 @@ import org.jclouds.http.options.BaseHttpRequestOptions;
 @Beta
 public class ListAlarmsForMetric extends BaseHttpRequestOptions {
 
-   int dimensionIndex = 1;
+    private static final int MAX_DIMENSIONS = 10;
+    private static final int MAX_LENGTH = 255;
+    private int dimensionIndex = 1;
 
-   /**
-    * The list of dimensions associated with the metric.
-    *
-    * @param dimensions the list of dimensions associated with the metric
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric dimensions(Set<Dimension> dimensions) {
-      for (Dimension dimension : checkNotNull(dimensions, "dimensions")) {
-         dimension(dimension);
-      }
-      return this;
-   }
+    /**
+     * The list of dimensions associated with the metric.
+     *
+     * @param dimensions the list of dimensions associated with the metric
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric dimensions(Set<Dimension> dimensions) {
+        checkNotNull(dimensions, "dimensions");
+        dimensions.forEach(this::dimension);
+        return this;
+    }
 
-   /**
-    * The dimension associated with the metric.
-    *
-    * @param dimension the dimension associated with the metric
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric dimension(Dimension dimension) {
-      checkNotNull(dimension, "dimension");
-      checkArgument(dimensionIndex <= 10, "maximum number of dimensions is 10");
-      formParameters.put("Dimensions.member." + dimensionIndex + ".Name", dimension.getName());
-      formParameters.put("Dimensions.member." + dimensionIndex + ".Value", dimension.getValue());
-      dimensionIndex++;
-      return this;
-   }
+    /**
+     * The dimension associated with the metric.
+     *
+     * @param dimension the dimension associated with the metric
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric dimension(Dimension dimension) {
+        validateDimension(dimension);
+        formParameters.put("Dimensions.member." + dimensionIndex + ".Name", dimension.getName());
+        formParameters.put("Dimensions.member." + dimensionIndex + ".Value", dimension.getValue());
+        dimensionIndex++;
+        return this;
+    }
 
-   /**
-    * The name of the metric.
-    *
-    * @param metricName the name of the metric
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric metricName(String metricName) {
-      checkNotNull(metricName, "metricName");
-      checkArgument(metricName.length() <= 255, "metricName must be between 1 and 255 characters in length");
-      formParameters.put("MetricName", metricName);
-      return this;
-   }
+    private void validateDimension(Dimension dimension) {
+        checkNotNull(dimension, "dimension");
+        checkArgument(dimensionIndex <= MAX_DIMENSIONS, "maximum number of dimensions is " + MAX_DIMENSIONS);
+    }
 
-   /**
-    * The namespace of the metric.
-    *
-    * @param namespace namespace of the metric
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric namespace(String namespace) {
-      checkNotNull(namespace, "namespace");
-      checkArgument(namespace.length() <= 255, "namespace must be between 1 and 255 characters in length");
-      formParameters.put("Namespace", namespace);
-      return this;
-   }
+    /**
+     * The name of the metric.
+     *
+     * @param metricName the name of the metric
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric metricName(String metricName) {
+        validateString(metricName, "metricName");
+        formParameters.put("MetricName", metricName);
+        return this;
+    }
 
-   /**
-    * The period in seconds over which the statistic is applied.
-    *
-    * @param period period in seconds over which the statistic is applied
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric period(int period) {
-      formParameters.put("Period", String.valueOf(period));
-      return this;
-   }
+    /**
+     * The namespace of the metric.
+     *
+     * @param namespace namespace of the metric
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric namespace(String namespace) {
+        validateString(namespace, "namespace");
+        formParameters.put("Namespace", namespace);
+        return this;
+    }
 
-   /**
-    * The statistic for the metric.
-    *
-    * @param statistic statistic for the metric
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric statistic(Statistics statistic) {
-      checkNotNull(statistic, "statistic");
-      checkArgument(statistic != Statistics.UNRECOGNIZED, "statistic unrecognized");
-      formParameters.put("Statistic", statistic.toString());
-      return this;
-   }
+    private void validateString(String value, String fieldName) {
+        checkNotNull(value, fieldName);
+        checkArgument(value.length() <= MAX_LENGTH, fieldName + " must be between 1 and " + MAX_LENGTH + " characters in length");
+    }
 
-   /**
-    * The unit for the metric.
-    *
-    * @param unit unit for the metric
-    *
-    * @return this {@code ListAlarmsForMetric} object
-    */
-   public ListAlarmsForMetric unit(Unit unit) {
-      checkNotNull(unit, "unit");
-      checkArgument(unit != Unit.UNRECOGNIZED, "unit unrecognized");
-      formParameters.put("Unit", unit.toString());
-      return this;
-   }
+    /**
+     * The period in seconds over which the statistic is applied.
+     *
+     * @param period period in seconds over which the statistic is applied
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric period(int period) {
+        formParameters.put("Period", String.valueOf(period));
+        return this;
+    }
 
+    /**
+     * The statistic for the metric.
+     *
+     * @param statistic statistic for the metric
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric statistic(Statistics statistic) {
+        validateEnum(statistic, Statistics.UNRECOGNIZED, "statistic");
+        formParameters.put("Statistic", statistic.toString());
+        return this;
+    }
+
+    /**
+     * The unit for the metric.
+     *
+     * @param unit unit for the metric
+     * @return this {@code ListAlarmsForMetric} object
+     */
+    public ListAlarmsForMetric unit(Unit unit) {
+        validateEnum(unit, Unit.UNRECOGNIZED, "unit");
+        formParameters.put("Unit", unit.toString());
+        return this;
+    }
+
+    private <T> void validateEnum(T value, T unrecognizedValue, String fieldName) {
+        checkNotNull(value, fieldName);
+        checkArgument(!value.equals(unrecognizedValue), fieldName + " unrecognized");
+    }
 }
