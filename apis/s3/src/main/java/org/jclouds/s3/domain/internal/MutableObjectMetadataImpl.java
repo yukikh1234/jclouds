@@ -1,24 +1,10 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.s3.domain.internal;
 
 import java.net.URI;
 import java.util.Date;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jclouds.http.HttpUtils;
 import org.jclouds.io.MutableContentMetadata;
@@ -41,7 +27,6 @@ public class MutableObjectMetadataImpl implements MutableObjectMetadata {
    private String eTag;
    private CanonicalUser owner;
    private StorageClass storageClass;
-   private String cacheControl;
    private Map<String, String> userMetadata = Maps.newHashMap();
    private MutableContentMetadata contentMetadata;
 
@@ -231,36 +216,23 @@ public class MutableObjectMetadataImpl implements MutableObjectMetadata {
 
    @Override
    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((uri == null) ? 0 : uri.hashCode());
-      return result;
+      return Objects.hash(uri);
    }
 
    @Override
    public boolean equals(Object obj) {
       if (this == obj)
          return true;
-      if (obj == null)
-         return false;
-      if (getClass() != obj.getClass())
+      if (obj == null || getClass() != obj.getClass())
          return false;
       MutableObjectMetadataImpl other = (MutableObjectMetadataImpl) obj;
-      if (uri == null) {
-         if (other.uri != null)
-            return false;
-      } else if (!uri.equals(other.uri))
-         return false;
-      return true;
+      return Objects.equals(uri, other.uri);
    }
 
    @Override
    public String toString() {
-      return String
-               .format(
-                        "[key=%s, bucket=%s, uri=%s, eTag=%s, cacheControl=%s, contentMetadata=%s, lastModified=%s, owner=%s, storageClass=%s, userMetadata=%s]",
-                        key, bucket, uri, eTag, cacheControl, contentMetadata, lastModified, owner, storageClass,
-                        userMetadata);
+      return String.format(
+            "[key=%s, bucket=%s, uri=%s, eTag=%s, contentMetadata=%s, lastModified=%s, owner=%s, storageClass=%s, userMetadata=%s]",
+            key, bucket, uri, eTag, contentMetadata, lastModified, owner, storageClass, userMetadata);
    }
-
 }
