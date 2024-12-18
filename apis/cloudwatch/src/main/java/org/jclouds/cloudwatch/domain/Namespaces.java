@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -35,6 +36,6 @@ public final class Namespaces {
    public static final String STORAGE_GATEWAY = "AWS/StorageGateway";
 
    private Namespaces() {
-      throw new AssertionError("intentionally unimplemented");
+      throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
    }
 }
