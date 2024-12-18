@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,26 +18,13 @@
 package org.jclouds.s3.filters;
 
 import static org.jclouds.aws.reference.AWSConstants.PROPERTY_HEADER_TAG;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.AMZ_ALGORITHM_HMAC_SHA256;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.AMZ_CONTENT_SHA256_HEADER;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.AMZ_DATE_HEADER;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.AMZ_DECODED_CONTENT_LENGTH_HEADER;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.AMZ_SECURITY_TOKEN_HEADER;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.CHUNK_SIGNATURE_HEADER;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.CLRF;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.CONTENT_ENCODING_HEADER_AWS_CHUNKED;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.SIGNATURE_LENGTH;
-import static org.jclouds.s3.filters.AwsSignatureV4Constants.STREAMING_BODY_SHA256;
+import static org.jclouds.s3.filters.AwsSignatureV4Constants.*;
 import static org.jclouds.s3.reference.S3Constants.PROPERTY_JCLOUDS_S3_CHUNKED_SIZE;
 import static org.jclouds.util.Strings2.toInputStream;
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.io.ByteStreams.readBytes;
-import static com.google.common.net.HttpHeaders.AUTHORIZATION;
-import static com.google.common.net.HttpHeaders.CONTENT_LENGTH;
-import static com.google.common.net.HttpHeaders.CONTENT_MD5;
-import static com.google.common.net.HttpHeaders.DATE;
+import static com.google.common.net.HttpHeaders.*;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -62,11 +50,10 @@ import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.hash.HashCode;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteProcessor;
-import com.google.common.net.HttpHeaders;
 import com.google.inject.Inject;
 
 /**
- * AWS4 signer sign 'chunked' uploads.
+ * AWS4 signer for 'chunked' uploads.
  */
 public class Aws4SignerForChunkedUpload extends Aws4SignerBase {
 
@@ -83,55 +70,92 @@ public class Aws4SignerForChunkedUpload extends Aws4SignerBase {
    }
 
    protected HttpRequest sign(HttpRequest request) throws HttpException {
-      checkNotNull(request, "request is not ready to sign");
-      checkNotNull(request.getEndpoint(), "request is not ready to sign, request.endpoint not present.");
-
+      validateRequest(request);
       Payload payload = request.getPayload();
-      // chunked upload required content-length.
       Long contentLength = payload.getContentMetadata().getContentLength();
-
-      // check contentLength not null
       checkNotNull(contentLength, "request is not ready to sign, payload contentLength not present.");
 
-      // get host from request endpoint.
       String host = request.getEndpoint().getHost();
-
       Date date = timestampProvider.get();
       String timestamp = timestampFormat.format(date);
       String datestamp = dateFormat.format(date);
-
       String service = serviceAndRegion.service();
       String region = serviceAndRegion.region(host);
       String credentialScope = Joiner.on('/').join(datestamp, region, service, "aws4_request");
 
-      HttpRequest.Builder<?> requestBuilder = request.toBuilder() //
-            .removeHeader(AUTHORIZATION) // remove Authorization
-            .removeHeader(DATE) // remove Date
-            .removeHeader(CONTENT_LENGTH); // remove Content-Length
+      HttpRequest.Builder<?> requestBuilder = initializeRequestBuilder(request);
 
-      ImmutableMap.Builder<String, String> signedHeadersBuilder = ImmutableSortedMap.<String, String>naturalOrder();
+      ImmutableMap.Builder<String, String> signedHeadersBuilder = ImmutableSortedMap.naturalOrder();
+      addContentEncodingHeaders(payload, requestBuilder, signedHeadersBuilder);
+      addContentLengthHeaders(contentLength, requestBuilder, signedHeadersBuilder);
+      addContentMD5Headers(request, payload, requestBuilder, signedHeadersBuilder);
+      addContentTypeHeaders(request, requestBuilder, signedHeadersBuilder);
+      addHostHeaders(request, host, requestBuilder, signedHeadersBuilder);
+      addOptionalHeaders(request, signedHeadersBuilder);
+      addAmzHeaders(request, signedHeadersBuilder);
 
-      // content-encoding
+      Credentials credentials = creds.get();
+      addSecurityTokenHeader(credentials, requestBuilder, signedHeadersBuilder);
+
+      String contentSha256 = getPayloadHash();
+      addContentSha256Header(contentSha256, requestBuilder, signedHeadersBuilder);
+
+      addDateHeader(timestamp, requestBuilder, signedHeadersBuilder);
+      ImmutableMap<String, String> signedHeaders = signedHeadersBuilder.build();
+
+      String stringToSign = createStringToSign(request.getMethod(), request.getEndpoint(), signedHeaders, timestamp,
+            credentialScope, contentSha256);
+      signatureWire.getWireLog().debug("<< " + stringToSign);
+
+      byte[] signatureKey = signatureKey(credentials.credential, datestamp, region, service);
+
+      ByteProcessor<byte[]> hmacSHA256 = initializeHmacSHA256(signatureKey);
+      String signature = calculateSeedSignature(stringToSign, hmacSHA256);
+
+      String authorization = buildAuthorizationHeader(credentials, credentialScope, signedHeaders, signature);
+
+      ChunkedUploadPayload chunkedPayload = new ChunkedUploadPayload(payload, userDataBlockSize, timestamp,
+            credentialScope, hmacSHA256, signature);
+      chunkedPayload.getContentMetadata().setContentEncoding(null);
+
+      return requestBuilder
+            .replaceHeader(AUTHORIZATION, authorization)
+            .payload(chunkedPayload)
+            .build();
+   }
+
+   private void validateRequest(HttpRequest request) {
+      checkNotNull(request, "request is not ready to sign");
+      checkNotNull(request.getEndpoint(), "request is not ready to sign, request.endpoint not present.");
+   }
+
+   private HttpRequest.Builder<?> initializeRequestBuilder(HttpRequest request) {
+      return request.toBuilder()
+            .removeHeader(AUTHORIZATION)
+            .removeHeader(DATE)
+            .removeHeader(CONTENT_LENGTH);
+   }
+
+   private void addContentEncodingHeaders(Payload payload, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       String contentEncoding = CONTENT_ENCODING_HEADER_AWS_CHUNKED;
       String originalContentEncoding = payload.getContentMetadata().getContentEncoding();
       if (originalContentEncoding != null) {
          contentEncoding += "," + originalContentEncoding;
       }
-      requestBuilder.replaceHeader(HttpHeaders.CONTENT_ENCODING, contentEncoding);
-      signedHeadersBuilder.put(HttpHeaders.CONTENT_ENCODING.toLowerCase(), contentEncoding);
+      requestBuilder.replaceHeader(CONTENT_ENCODING, contentEncoding);
+      signedHeadersBuilder.put(CONTENT_ENCODING.toLowerCase(), contentEncoding);
+   }
 
-
-      // x-amz-decoded-content-length
+   private void addContentLengthHeaders(Long contentLength, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       requestBuilder.replaceHeader(AMZ_DECODED_CONTENT_LENGTH_HEADER, contentLength.toString());
       signedHeadersBuilder.put(AMZ_DECODED_CONTENT_LENGTH_HEADER.toLowerCase(), contentLength.toString());
 
-      // how big is the overall request stream going to be once we add the signature
-      // 'headers' to each chunk?
       long totalLength = calculateChunkedContentLength(contentLength, userDataBlockSize);
       requestBuilder.replaceHeader(CONTENT_LENGTH, Long.toString(totalLength));
       signedHeadersBuilder.put(CONTENT_LENGTH.toLowerCase(), Long.toString(totalLength));
+   }
 
-      // Content MD5
+   private void addContentMD5Headers(HttpRequest request, Payload payload, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       String contentMD5 = request.getFirstHeaderOrNull(CONTENT_MD5);
       if (payload != null) {
          HashCode md5 = payload.getContentMetadata().getContentMD5AsHashCode();
@@ -143,106 +167,80 @@ public class Aws4SignerForChunkedUpload extends Aws4SignerBase {
          requestBuilder.replaceHeader(CONTENT_MD5, contentMD5);
          signedHeadersBuilder.put(CONTENT_MD5.toLowerCase(), contentMD5);
       }
+   }
 
-      // Content Type
-      // content-type is not a required signing param. However, examples use this, so we include it to ease testing.
+   private void addContentTypeHeaders(HttpRequest request, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       String contentType = getContentType(request);
       if (!Strings.isNullOrEmpty(contentType)) {
-         requestBuilder.replaceHeader(HttpHeaders.CONTENT_TYPE, contentType);
-         signedHeadersBuilder.put(HttpHeaders.CONTENT_TYPE.toLowerCase(), contentType);
+         requestBuilder.replaceHeader(CONTENT_TYPE, contentType);
+         signedHeadersBuilder.put(CONTENT_TYPE.toLowerCase(), contentType);
       } else {
-         requestBuilder.removeHeader(HttpHeaders.CONTENT_TYPE);
+         requestBuilder.removeHeader(CONTENT_TYPE);
       }
+   }
 
-      // host
+   private void addHostHeaders(HttpRequest request, String host, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       host = hostHeaderFor(request.getEndpoint());
-      requestBuilder.replaceHeader(HttpHeaders.HOST, host);
-      signedHeadersBuilder.put(HttpHeaders.HOST.toLowerCase(), host);
+      requestBuilder.replaceHeader(HOST, host);
+      signedHeadersBuilder.put(HOST.toLowerCase(), host);
+   }
 
-      // user-agent, not a required signing param
-      String userAgent = request.getFirstHeaderOrNull(HttpHeaders.USER_AGENT);
+   private void addOptionalHeaders(HttpRequest request, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
+      String userAgent = request.getFirstHeaderOrNull(USER_AGENT);
       if (userAgent != null) {
-         signedHeadersBuilder.put(HttpHeaders.USER_AGENT.toLowerCase(), userAgent);
+         signedHeadersBuilder.put(USER_AGENT.toLowerCase(), userAgent);
       }
+   }
 
-      // all x-amz-* headers
+   private void addAmzHeaders(HttpRequest request, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       appendAmzHeaders(request, signedHeadersBuilder);
+   }
 
-      // x-amz-security-token
-      Credentials credentials = creds.get();
+   private void addSecurityTokenHeader(Credentials credentials, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
       if (credentials instanceof SessionCredentials) {
          String token = SessionCredentials.class.cast(credentials).getSessionToken();
          requestBuilder.replaceHeader(AMZ_SECURITY_TOKEN_HEADER, token);
          signedHeadersBuilder.put(AMZ_SECURITY_TOKEN_HEADER.toLowerCase(), token);
       }
-
-      // x-amz-content-sha256
-      String contentSha256 = getPayloadHash();
-      requestBuilder.replaceHeader(AMZ_CONTENT_SHA256_HEADER, contentSha256);
-      signedHeadersBuilder.put(AMZ_CONTENT_SHA256_HEADER.toLowerCase(), contentSha256);
-
-      // put x-amz-date
-      requestBuilder.replaceHeader(AMZ_DATE_HEADER, timestamp);
-      signedHeadersBuilder.put(AMZ_DATE_HEADER.toLowerCase(), timestamp);
-
-      ImmutableMap<String, String> signedHeaders = signedHeadersBuilder.build();
-
-      String stringToSign = createStringToSign(request.getMethod(), request.getEndpoint(), signedHeaders, timestamp,
-            credentialScope, contentSha256);
-      signatureWire.getWireLog().debug("<< " + stringToSign);
-
-      byte[] signatureKey = signatureKey(credentials.credential, datestamp, region, service);
-
-      // init hmacSHA256 processor for seed signature and chunked block signature
-      ByteProcessor<byte[]> hmacSHA256;
-      try {
-         hmacSHA256 = hmacSHA256(crypto, signatureKey);
-      } catch (InvalidKeyException e) {
-         throw new ChunkedUploadException("invalid key", e);
-      }
-
-      // Calculating the Seed Signature
-      String signature;
-      try {
-         signature = hex(readBytes(toInputStream(stringToSign), hmacSHA256));
-      } catch (IOException e) {
-         throw new ChunkedUploadException("hmac sha256 seed signature error", e);
-      }
-
-      StringBuilder authorization = new StringBuilder(AMZ_ALGORITHM_HMAC_SHA256).append(" ");
-      authorization.append("Credential=").append(Joiner.on("/").join(credentials.identity, credentialScope))
-            .append(", ");
-      authorization.append("SignedHeaders=").append(Joiner.on(";").join(signedHeaders.keySet()))
-            .append(", ");
-      authorization.append("Signature=").append(signature);
-
-      // replace request payload with chunked upload payload
-      ChunkedUploadPayload chunkedPayload = new ChunkedUploadPayload(payload, userDataBlockSize, timestamp,
-            credentialScope, hmacSHA256, signature);
-      chunkedPayload.getContentMetadata().setContentEncoding(null);
-
-      return requestBuilder
-            .replaceHeader(HttpHeaders.AUTHORIZATION, authorization.toString())
-            .payload(chunkedPayload)
-            .build();
-
    }
 
-   // for seed signature, value: STREAMING-AWS4-HMAC-SHA256-PAYLOAD
+   private void addContentSha256Header(String contentSha256, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
+      requestBuilder.replaceHeader(AMZ_CONTENT_SHA256_HEADER, contentSha256);
+      signedHeadersBuilder.put(AMZ_CONTENT_SHA256_HEADER.toLowerCase(), contentSha256);
+   }
+
+   private void addDateHeader(String timestamp, HttpRequest.Builder<?> requestBuilder, ImmutableMap.Builder<String, String> signedHeadersBuilder) {
+      requestBuilder.replaceHeader(AMZ_DATE_HEADER, timestamp);
+      signedHeadersBuilder.put(AMZ_DATE_HEADER.toLowerCase(), timestamp);
+   }
+
+   private ByteProcessor<byte[]> initializeHmacSHA256(byte[] signatureKey) throws ChunkedUploadException {
+      try {
+         return hmacSHA256(crypto, signatureKey);
+      } catch (InvalidKeyException e) {
+         throw new ChunkedUploadException("Invalid key", e);
+      }
+   }
+
+   private String calculateSeedSignature(String stringToSign, ByteProcessor<byte[]> hmacSHA256) throws ChunkedUploadException {
+      try {
+         return hex(readBytes(toInputStream(stringToSign), hmacSHA256));
+      } catch (IOException e) {
+         throw new ChunkedUploadException("HMAC SHA256 seed signature error", e);
+      }
+   }
+
+   private String buildAuthorizationHeader(Credentials credentials, String credentialScope, ImmutableMap<String, String> signedHeaders, String signature) {
+      return AMZ_ALGORITHM_HMAC_SHA256 + " " +
+            "Credential=" + Joiner.on("/").join(credentials.identity, credentialScope) + ", " +
+            "SignedHeaders=" + Joiner.on(";").join(signedHeaders.keySet()) + ", " +
+            "Signature=" + signature;
+   }
+
    protected String getPayloadHash() {
       return STREAMING_BODY_SHA256;
    }
 
-   /**
-    * Calculates the expanded payload size of our data when it is chunked
-    *
-    * @param originalLength The true size of the data payload to be uploaded
-    * @param chunkSize     The size of each chunk we intend to send; each chunk will be
-    *                  prefixed with signed header data, expanding the overall size
-    *                  by a determinable amount
-    * @return The overall payload size to use as content-length on a chunked
-    * upload
-    */
    public static long calculateChunkedContentLength(long originalLength, long chunkSize) {
       checkArgument(originalLength > 0, "Nonnegative content length expected.");
 
@@ -253,15 +251,6 @@ public class Aws4SignerForChunkedUpload extends Aws4SignerBase {
             + calculateChunkHeaderLength(0);
    }
 
-   /**
-    * Returns the size of a chunk header, which only varies depending on the
-    * selected chunk size
-    *
-    * @param chunkDataSize The intended size of each chunk; this is placed into the chunk
-    *                 header
-    * @return The overall size of the header that will prefix the user data in
-    * each chunk
-    */
    private static long calculateChunkHeaderLength(long chunkDataSize) {
       return Long.toHexString(chunkDataSize).length()
             + CHUNK_SIGNATURE_HEADER.length()
@@ -270,6 +259,4 @@ public class Aws4SignerForChunkedUpload extends Aws4SignerBase {
             + chunkDataSize
             + CLRF.length();
    }
-
-
 }
