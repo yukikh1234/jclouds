@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -35,12 +36,7 @@ public class ListMetricsResponse extends ForwardingSet<Metric> {
    private final String nextToken;
 
    public ListMetricsResponse(@Nullable Set<Metric> metrics, @Nullable String nextToken) {
-      // Default to an empty set
-      if (metrics == null) {
-         this.metrics = ImmutableSet.<Metric>of();
-      } else {
-         this.metrics = ImmutableSet.<Metric>copyOf(metrics);
-      }
+      this.metrics = metrics == null ? ImmutableSet.<Metric>of() : ImmutableSet.copyOf(metrics);
       this.nextToken = nextToken;
    }
 
@@ -60,20 +56,15 @@ public class ListMetricsResponse extends ForwardingSet<Metric> {
       return Objects.hashCode(metrics, nextToken);
    }
 
-    /**
+   /**
     * {@inheritDoc}
     */
    @Override
    public boolean equals(Object obj) {
-      if (this == obj)
-         return true;
-      if (obj == null)
-         return false;
-      if (getClass() != obj.getClass())
-         return false;
-      ListMetricsResponse other = (ListMetricsResponse)obj;
-      return Objects.equal(this.metrics, other.metrics) &&
-             Objects.equal(this.nextToken, other.nextToken);
+      if (this == obj) return true;
+      if (!(obj instanceof ListMetricsResponse)) return false;
+      ListMetricsResponse other = (ListMetricsResponse) obj;
+      return Objects.equal(metrics, other.metrics) && Objects.equal(nextToken, other.nextToken);
    }
 
    /**
