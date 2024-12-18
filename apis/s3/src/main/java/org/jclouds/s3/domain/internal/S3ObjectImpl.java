@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,13 +20,11 @@ package org.jclouds.s3.domain.internal;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import jakarta.inject.Inject;
-
 import org.jclouds.http.internal.PayloadEnclosingImpl;
 import org.jclouds.io.Payload;
 import org.jclouds.s3.domain.AccessControlList;
 import org.jclouds.s3.domain.MutableObjectMetadata;
 import org.jclouds.s3.domain.S3Object;
-
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 
@@ -35,23 +34,6 @@ import com.google.common.collect.Multimap;
 public class S3ObjectImpl extends PayloadEnclosingImpl implements S3Object, Comparable<S3Object> {
 
    private AccessControlList accessControlList;
-
-   /**
-    * {@inheritDoc}
-    */
-   @Override
-   public void setAccessControlList(AccessControlList acl) {
-      this.accessControlList = acl;
-   }
-
-   /**
-    * {@inheritDoc}
-    */
-   @Override
-   public AccessControlList getAccessControlList() {
-      return this.accessControlList;
-   }
-
    private final MutableObjectMetadata metadata;
    private Multimap<String, String> allHeaders = LinkedHashMultimap.create();
 
@@ -61,37 +43,34 @@ public class S3ObjectImpl extends PayloadEnclosingImpl implements S3Object, Comp
       this.metadata = metadata;
    }
 
-   /**
-    * {@inheritDoc}
-    */
+   @Override
+   public void setAccessControlList(AccessControlList acl) {
+      this.accessControlList = acl;
+   }
+
+   @Override
+   public AccessControlList getAccessControlList() {
+      return this.accessControlList;
+   }
+
    @Override
    public MutableObjectMetadata getMetadata() {
       return metadata;
    }
 
-   /**
-    * {@inheritDoc}
-    */
    @Override
    public Multimap<String, String> getAllHeaders() {
       return allHeaders;
    }
 
-   /**
-    * {@inheritDoc}
-    */
    @Override
    public void setAllHeaders(Multimap<String, String> allHeaders) {
       this.allHeaders = checkNotNull(allHeaders, "allHeaders");
    }
 
-   /**
-    * {@inheritDoc}
-    */
    @Override
    public int compareTo(S3Object o) {
-      if (getMetadata().getKey() == null)
-         return -1;
+      if (getMetadata().getKey() == null) return -1;
       return (this == o) ? 0 : getMetadata().getKey().compareTo(o.getMetadata().getKey());
    }
 
@@ -105,19 +84,10 @@ public class S3ObjectImpl extends PayloadEnclosingImpl implements S3Object, Comp
 
    @Override
    public boolean equals(Object obj) {
-      if (this == obj)
-         return true;
-      if (!super.equals(obj))
-         return false;
-      if (getClass() != obj.getClass())
-         return false;
+      if (this == obj) return true;
+      if (!(obj instanceof S3ObjectImpl)) return false;
       S3ObjectImpl other = (S3ObjectImpl) obj;
-      if (metadata == null) {
-         if (other.metadata != null)
-            return false;
-      } else if (!metadata.equals(other.metadata))
-         return false;
-      return true;
+      return super.equals(other) && (metadata != null ? metadata.equals(other.metadata) : other.metadata == null);
    }
 
    @Override
@@ -130,5 +100,4 @@ public class S3ObjectImpl extends PayloadEnclosingImpl implements S3Object, Comp
       super.setPayload(data);
       metadata.setContentMetadata(data.getContentMetadata());
    }
-
 }
