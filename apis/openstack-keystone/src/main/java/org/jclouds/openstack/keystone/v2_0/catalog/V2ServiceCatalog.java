@@ -1,24 +1,10 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.openstack.keystone.v2_0.catalog;
 
 import static org.jclouds.openstack.keystone.catalog.ServiceEndpoint.Interface.ADMIN;
 import static org.jclouds.openstack.keystone.catalog.ServiceEndpoint.Interface.INTERNAL;
 import static org.jclouds.openstack.keystone.catalog.ServiceEndpoint.Interface.PUBLIC;
+import static org.jclouds.openstack.keystone.catalog.ServiceEndpoint.Interface.UNRECOGNIZED;
 
 import java.net.URI;
 import java.util.List;
@@ -58,48 +44,54 @@ public class V2ServiceCatalog implements Supplier<List<ServiceEndpoint>> {
       ImmutableList.Builder<ServiceEndpoint> serviceEndpoints = ImmutableList.builder();
       for (Service service : access) {
          for (Endpoint endpoint : service) {
-            if (endpoint.getAdminURL() != null) {
-               serviceEndpoints.add(toServiceEndpoint(service.getType(), ADMIN).apply(endpoint));
-            }
-            if (endpoint.getInternalURL() != null) {
-               serviceEndpoints.add(toServiceEndpoint(service.getType(), INTERNAL).apply(endpoint));
-            }
-            if (endpoint.getPublicURL() != null) {
-               serviceEndpoints.add(toServiceEndpoint(service.getType(), PUBLIC).apply(endpoint));
-            }
+            processEndpoint(service.getType(), endpoint, serviceEndpoints);
          }
       }
-
       return serviceEndpoints.build();
    }
 
-   private Function<Endpoint, ServiceEndpoint> toServiceEndpoint(final String type, final Interface iface) {
-      return new Function<Endpoint, ServiceEndpoint>() {
-         @Override
-         public ServiceEndpoint apply(Endpoint input) {
-            ServiceEndpoint.Builder builder = ServiceEndpoint.builder().id(input.getId()).iface(iface)
-                  .regionId(input.getRegion()).type(type).version(input.getVersionId());
-
-            switch (iface) {
-               case ADMIN:
-                  builder.url(input.getAdminURL());
-                  break;
-               case INTERNAL:
-                  builder.url(input.getInternalURL());
-                  break;
-               case PUBLIC:
-                  builder.url(input.getPublicURL());
-                  break;
-               case UNRECOGNIZED:
-                  URI url = input.getPublicURL() != null ? input.getPublicURL() : input.getInternalURL();
-                  logger.warn("Unrecognized endpoint interface for %s. Using URL: %s", input, url);
-                  builder.url(url);
-                  break;
-            }
-
-            return builder.build();
-         }
-      };
+   private void processEndpoint(String type, Endpoint endpoint, ImmutableList.Builder<ServiceEndpoint> serviceEndpoints) {
+      addIfNotNull(serviceEndpoints, endpoint.getAdminURL(), toServiceEndpoint(type, ADMIN), endpoint);
+      addIfNotNull(serviceEndpoints, endpoint.getInternalURL(), toServiceEndpoint(type, INTERNAL), endpoint);
+      addIfNotNull(serviceEndpoints, endpoint.getPublicURL(), toServiceEndpoint(type, PUBLIC), endpoint);
    }
 
+   private void addIfNotNull(ImmutableList.Builder<ServiceEndpoint> builder, URI url, Function<Endpoint, ServiceEndpoint> function, Endpoint endpoint) {
+      if (url != null) {
+         builder.add(function.apply(endpoint));
+      }
+   }
+
+   private Function<Endpoint, ServiceEndpoint> toServiceEndpoint(final String type, final Interface iface) {
+      return endpoint -> buildServiceEndpoint(type, iface, endpoint);
+   }
+
+   private ServiceEndpoint buildServiceEndpoint(String type, Interface iface, Endpoint input) {
+      ServiceEndpoint.Builder builder = ServiceEndpoint.builder()
+            .id(input.getId())
+            .iface(iface)
+            .regionId(input.getRegion())
+            .type(type)
+            .version(input.getVersionId());
+
+      URI url = getUrlForInterface(iface, input);
+      if (iface == UNRECOGNIZED) {
+         logger.warn("Unrecognized endpoint interface for %s. Using URL: %s", input, url);
+      }
+      builder.url(url);
+      return builder.build();
+   }
+
+   private URI getUrlForInterface(Interface iface, Endpoint input) {
+      switch (iface) {
+         case ADMIN:
+            return input.getAdminURL();
+         case INTERNAL:
+            return input.getInternalURL();
+         case PUBLIC:
+            return input.getPublicURL();
+         default:
+            return input.getPublicURL() != null ? input.getPublicURL() : input.getInternalURL();
+      }
+   }
 }
