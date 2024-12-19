@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -32,7 +33,6 @@ import org.jclouds.openstack.keystone.v2_0.KeystoneApi;
 import org.jclouds.openstack.v2_0.domain.PaginatedCollection;
 import org.jclouds.openstack.keystone.v2_0.domain.User;
 import org.jclouds.openstack.keystone.v2_0.features.UserApi;
-import org.jclouds.openstack.keystone.v2_0.functions.internal.ParseUsers.Users;
 import org.jclouds.openstack.v2_0.domain.Link;
 
 import com.google.common.annotations.Beta;
@@ -45,14 +45,13 @@ import org.jclouds.openstack.v2_0.options.PaginationOptions;
  */
 @Beta
 @Singleton
-public class ParseUsers extends ParseJson<Users> {
-   static class Users extends PaginatedCollection<User> {
+public class ParseUsers extends ParseJson<ParseUsers.Users> {
 
+   static class Users extends PaginatedCollection<User> {
       @ConstructorProperties({ "users", "users_links" })
       protected Users(Iterable<User> users, Iterable<Link> users_links) {
          super(users, users_links);
       }
-
    }
 
    @Inject
@@ -72,22 +71,19 @@ public class ParseUsers extends ParseJson<Users> {
       @Override
       protected Function<Object, IterableWithMarker<User>> markerToNextForArg0(Optional<Object> ignored) {
          final UserApi userApi = api.getUserApi().get();
-         return new Function<Object, IterableWithMarker<User>>() {
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public IterableWithMarker<User> apply(Object input) {
-               PaginationOptions paginationOptions = PaginationOptions.class.cast(input);
-               return IterableWithMarker.class.cast(userApi.list(paginationOptions));
-            }
-
-            @Override
-            public String toString() {
-               return "listUsers()";
-            }
+         return input -> {
+            PaginationOptions paginationOptions = PaginationOptions.class.cast(input);
+            return fetchUsers(userApi, paginationOptions);
          };
       }
 
-   }
+      private IterableWithMarker<User> fetchUsers(UserApi userApi, PaginationOptions paginationOptions) {
+         return IterableWithMarker.class.cast(userApi.list(paginationOptions));
+      }
 
+      @Override
+      public String toString() {
+         return "listUsers()";
+      }
+   }
 }
