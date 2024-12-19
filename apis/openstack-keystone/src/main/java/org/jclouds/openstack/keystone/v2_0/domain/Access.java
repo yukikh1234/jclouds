@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -52,7 +53,7 @@ public class Access extends ForwardingSet<Service> implements Comparable<Access>
 
       protected Token token;
       protected User user;
-      protected ImmutableSet.Builder<Service> serviceCatalog = ImmutableSet.<Service> builder();
+      protected ImmutableSet.Builder<Service> serviceCatalog = ImmutableSet.builder();
 
       /**
        * @see Access#getToken()
@@ -110,7 +111,7 @@ public class Access extends ForwardingSet<Service> implements Comparable<Access>
    protected Access(Token token, User user, @Nullable Set<Service> serviceCatalog) {
       this.token = checkNotNull(token, "token");
       this.user = checkNotNull(user, "user");
-      this.serviceCatalog = serviceCatalog == null ? ImmutableSet.<Service> of() : ImmutableSet.copyOf(serviceCatalog);
+      this.serviceCatalog = serviceCatalog == null ? ImmutableSet.of() : ImmutableSet.copyOf(serviceCatalog);
    }
 
    /**
@@ -134,17 +135,19 @@ public class Access extends ForwardingSet<Service> implements Comparable<Access>
 
    @Override
    public boolean equals(Object obj) {
-      if (this == obj)
-         return true;
-      if (obj == null || getClass() != obj.getClass())
-         return false;
-      Access that = Access.class.cast(obj);
-      return Objects.equal(this.token, that.token) && Objects.equal(this.user, that.user)
-            && Objects.equal(this.serviceCatalog, that.serviceCatalog);
+      if (this == obj) return true;
+      if (!(obj instanceof Access)) return false;
+      Access that = (Access) obj;
+      return Objects.equal(token, that.token) &&
+             Objects.equal(user, that.user) &&
+             Objects.equal(serviceCatalog, that.serviceCatalog);
    }
 
    protected ToStringHelper string() {
-      return MoreObjects.toStringHelper(this).omitNullValues().add("token", token).add("user", user)
+      return MoreObjects.toStringHelper(this)
+            .omitNullValues()
+            .add("token", token)
+            .add("user", user)
             .add("serviceCatalog", serviceCatalog);
    }
 
@@ -155,11 +158,8 @@ public class Access extends ForwardingSet<Service> implements Comparable<Access>
 
    @Override
    public int compareTo(Access that) {
-      if (that == null)
-         return 1;
-      if (this == that)
-         return 0;
-      return this.token.compareTo(that.token);
+      if (that == null) return 1;
+      return token.compareTo(that.token);
    }
 
    @Override
@@ -171,5 +171,4 @@ public class Access extends ForwardingSet<Service> implements Comparable<Access>
    public String getAuthToken() {
       return token.getId();
    }
-
 }
