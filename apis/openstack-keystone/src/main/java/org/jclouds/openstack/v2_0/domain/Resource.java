@@ -1,30 +1,15 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.openstack.v2_0.domain;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.beans.ConstructorProperties;
+import java.util.Objects;
 import java.util.Set;
 
 import org.jclouds.javax.annotation.Nullable;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
 import com.google.common.base.MoreObjects.ToStringHelper;
 import com.google.common.collect.ImmutableSet;
 
@@ -36,6 +21,19 @@ import com.google.common.collect.ImmutableSet;
 />
  */
 public class Resource implements Comparable<Resource> {
+
+   private final String id;
+   private final String name;
+   private final Set<Link> links;
+
+   @ConstructorProperties({
+         "id", "name", "links"
+   })
+   protected Resource(String id, @Nullable String name, @Nullable Set<Link> links) {
+      this.id = checkNotNull(id, "id");
+      this.name = name;
+      this.links = links == null ? null : ImmutableSet.copyOf(links);
+   }
 
    public static Builder<?> builder() {
       return new ConcreteBuilder();
@@ -52,25 +50,16 @@ public class Resource implements Comparable<Resource> {
       protected String name;
       protected Set<Link> links;
 
-      /**
-       * @see Resource#getId()
-       */
       public T id(String id) {
          this.id = id;
          return self();
       }
 
-      /**
-       * @see Resource#getName()
-       */
       public T name(String name) {
          this.name = name;
          return self();
       }
 
-      /**
-       * @see Resource#getLinks()
-       */
       public T links(Set<Link> links) {
          this.links = links == null ? null : ImmutableSet.copyOf(links);
          return self();
@@ -99,19 +88,6 @@ public class Resource implements Comparable<Resource> {
       }
    }
 
-   private final String id;
-   private final String name;
-   private final Set<Link> links;
-
-   @ConstructorProperties({
-         "id", "name", "links"
-   })
-   protected Resource(String id, @Nullable String name, @Nullable Set<Link> links) {
-      this.id = checkNotNull(id, "id");
-      this.name = name;
-      this.links = links == null ? null : ImmutableSet.copyOf(links);
-   }
-   
    /**
     * When providing an ID, it is assumed that the resource exists in the current OpenStack
     * deployment
@@ -140,17 +116,17 @@ public class Resource implements Comparable<Resource> {
 
    @Override
    public int hashCode() {
-      return Objects.hashCode(id, name, links);
+      return Objects.hash(id, name, links);
    }
 
    @Override
    public boolean equals(Object obj) {
       if (this == obj) return true;
       if (obj == null || getClass() != obj.getClass()) return false;
-      Resource that = Resource.class.cast(obj);
-      return Objects.equal(this.id, that.id)
-            && Objects.equal(this.name, that.name)
-            && Objects.equal(this.links, that.links);
+      Resource that = (Resource) obj;
+      return Objects.equals(this.id, that.id) &&
+             Objects.equals(this.name, that.name) &&
+             Objects.equals(this.links, that.links);
    }
 
    protected ToStringHelper string() {
@@ -165,11 +141,7 @@ public class Resource implements Comparable<Resource> {
 
    @Override
    public int compareTo(Resource that) {
-      if (that == null)
-         return 1;
-      if (this == that)
-         return 0;
-      return this.getId().compareTo(that.getId());
+      if (that == null) return 1;
+      return this.id.compareTo(that.id);
    }
-
 }
