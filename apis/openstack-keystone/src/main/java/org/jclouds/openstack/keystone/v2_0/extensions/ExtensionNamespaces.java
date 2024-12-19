@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -22,12 +23,14 @@ package org.jclouds.openstack.keystone.v2_0.extensions;
  * @see <a href= "http://docs.openstack.org/developer/keystone/extension_development.html" />
  */
 public final class ExtensionNamespaces {
+
    /**
     * OpenStack Keystone Admin Support
     */
    public static final String OS_KSADM = "http://docs.openstack.org/identity/api/ext/OS-KSADM/v1.0";
 
+   // Private constructor to prevent instantiation
    private ExtensionNamespaces() {
-      throw new AssertionError("intentionally unimplemented");
+      // Intentionally unimplemented
    }
 }
