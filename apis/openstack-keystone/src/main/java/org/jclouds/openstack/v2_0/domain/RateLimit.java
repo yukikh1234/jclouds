@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -59,16 +60,22 @@ public final class RateLimit {
 
    @Override
    public boolean equals(Object obj) {
-      if (this == obj)
+      if (this == obj) {
          return true;
-      if (obj == null || getClass() != obj.getClass())
+      }
+      if (!(obj instanceof RateLimit)) {
          return false;
-      RateLimit that = RateLimit.class.cast(obj);
+      }
+      RateLimit that = (RateLimit) obj;
       return equal(this.uri, that.uri);
    }
 
    @Override
    public String toString() {
-      return toStringHelper(this).add("uri", uri).add("regex", regex).add("limits", limits).toString();
+      return toStringHelper(this)
+            .add("uri", uri)
+            .add("regex", regex)
+            .add("limits", limits)
+            .toString();
    }
 }
