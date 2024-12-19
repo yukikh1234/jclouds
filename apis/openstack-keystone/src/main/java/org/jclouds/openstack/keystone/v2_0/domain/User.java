@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.openstack.keystone.v2_0.domain;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -29,18 +14,6 @@ import com.google.common.base.MoreObjects.ToStringHelper;
 import com.google.common.collect.ForwardingSet;
 import com.google.common.collect.ImmutableSet;
 
-/**
- * A digital representation of a person, system, or service who uses OpenStack
- * cloud services. Keystone authentication services will validate that incoming
- * request are being made by the user who claims to be making the call. Users
- * have a login and may be assigned tokens to access users. Users may be
- * directly assigned to a particular tenant and behave as if they are contained
- * in that tenant.
- * 
- * @see <a href=
- *      "http://docs.openstack.org/api/openstack-identity-service/2.0/content/Identity-User-Concepts-e1362.html"
- *      />
- */
 public class User extends ForwardingSet<Role> {
 
    public static Builder<?> builder() {
@@ -59,59 +32,38 @@ public class User extends ForwardingSet<Role> {
       protected String email;
       protected Boolean enabled;
       protected String tenantId;
-      protected ImmutableSet.Builder<Role> roles = ImmutableSet.<Role> builder();
+      protected ImmutableSet.Builder<Role> roles = ImmutableSet.builder();
 
-      /**
-       * @see User#getId()
-       */
       public T id(String id) {
          this.id = id;
          return self();
       }
 
-      /**
-       * @see User#getName()
-       */
       public T name(String name) {
          this.name = name;
          return self();
       }
 
-      /**
-       * @see User#getEmail()
-       */
       public T email(String email) {
          this.email = email;
          return self();
       }
 
-      /**
-       * @see User#isEnabled()
-       */
       public T enabled(Boolean enabled) {
          this.enabled = enabled;
          return self();
       }
 
-      /**
-       * @see User#getTenantId
-       */
       public T tenantId(String tenantId) {
          this.tenantId = tenantId;
          return self();
       }
 
-      /**
-       * @see User#delegate()
-       */
       public T role(Role role) {
          this.roles.add(role);
          return self();
       }
 
-      /**
-       * @see User#delegate()
-       */
       public T roles(Iterable<Role> roles) {
          this.roles.addAll(roles);
          return self();
@@ -149,43 +101,25 @@ public class User extends ForwardingSet<Role> {
       this.email = email;
       this.enabled = enabled;
       this.tenantId = tenantId;
-      this.roles = roles == null ? ImmutableSet.<Role> of() : ImmutableSet.copyOf(roles);
+      this.roles = roles == null ? ImmutableSet.of() : ImmutableSet.copyOf(roles);
    }
 
-   /**
-    * When providing an ID, it is assumed that the user exists in the current
-    * OpenStack deployment
-    * 
-    * @return the id of the user in the current OpenStack deployment
-    */
    public String getId() {
       return this.id;
    }
 
-   /**
-    * @return the name of the user
-    */
    public String getName() {
       return this.name;
    }
 
-   /**
-    * @return the e-mail
-    */
    public String getEmail() {
       return this.email;
    }
 
-   /**
-    * @return if the user is enabled
-    */
    public boolean isEnabled() {
       return this.enabled;
    }
 
-   /**
-    * @return the user tenant
-    */
    public String getTenantId() {
       return this.tenantId;
    }
@@ -201,10 +135,14 @@ public class User extends ForwardingSet<Role> {
          return true;
       if (obj == null || getClass() != obj.getClass())
          return false;
-      User that = User.class.cast(obj);
-      return Objects.equal(this.id, that.id) && Objects.equal(this.name, that.name)
-            && Objects.equal(this.roles, that.roles) && Objects.equal(this.enabled, that.enabled)
-            && Objects.equal(this.tenantId, that.tenantId) && Objects.equal(this.email, that.email);
+      User that = (User) obj;
+      return equalAttributes(that);
+   }
+
+   private boolean equalAttributes(User that) {
+      return Objects.equal(id, that.id) && Objects.equal(name, that.name)
+            && Objects.equal(roles, that.roles) && Objects.equal(enabled, that.enabled)
+            && Objects.equal(tenantId, that.tenantId) && Objects.equal(email, that.email);
    }
 
    protected ToStringHelper string() {
