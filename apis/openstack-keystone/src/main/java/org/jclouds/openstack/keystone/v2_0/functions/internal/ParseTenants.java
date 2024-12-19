@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.openstack.keystone.v2_0.functions.internal;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -40,19 +25,15 @@ import com.google.common.base.Function;
 import com.google.inject.TypeLiteral;
 import org.jclouds.openstack.v2_0.options.PaginationOptions;
 
-/**
- * boiler plate until we determine a better way
- */
 @Beta
 @Singleton
 public class ParseTenants extends ParseJson<Tenants> {
-   static class Tenants extends PaginatedCollection<Tenant> {
 
+   static class Tenants extends PaginatedCollection<Tenant> {
       @ConstructorProperties({ "tenants", "tenants_links" })
       protected Tenants(Iterable<Tenant> tenants, Iterable<Link> tenants_links) {
          super(tenants, tenants_links);
       }
-
    }
 
    @Inject
@@ -72,22 +53,27 @@ public class ParseTenants extends ParseJson<Tenants> {
       @Override
       protected Function<Object, IterableWithMarker<Tenant>> markerToNextForArg0(Optional<Object> ignored) {
          final TenantApi tenantApi = api.getTenantApi().get();
-         return new Function<Object, IterableWithMarker<Tenant>>() {
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public IterableWithMarker<Tenant> apply(Object input) {
-               PaginationOptions paginationOptions = PaginationOptions.class.cast(input);
-               return IterableWithMarker.class.cast(tenantApi.list(paginationOptions));
-            }
-
-            @Override
-            public String toString() {
-               return "listTenants()";
-            }
-         };
+         return new TenantPaginationFunction(tenantApi);
       }
 
-   }
+      private static class TenantPaginationFunction implements Function<Object, IterableWithMarker<Tenant>> {
+         private final TenantApi tenantApi;
 
+         private TenantPaginationFunction(TenantApi tenantApi) {
+            this.tenantApi = tenantApi;
+         }
+
+         @SuppressWarnings("unchecked")
+         @Override
+         public IterableWithMarker<Tenant> apply(Object input) {
+            PaginationOptions paginationOptions = PaginationOptions.class.cast(input);
+            return IterableWithMarker.class.cast(tenantApi.list(paginationOptions));
+         }
+
+         @Override
+         public String toString() {
+            return "listTenants()";
+         }
+      }
+   }
 }
