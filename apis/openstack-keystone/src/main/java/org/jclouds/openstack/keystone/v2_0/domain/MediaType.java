@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -29,15 +30,15 @@ import com.google.common.base.MoreObjects.ToStringHelper;
  */
 public class MediaType {
 
-   public static Builder<?> builder() {
+   public static Builder builder() {
       return new ConcreteBuilder();
    }
 
-   public Builder<?> toBuilder() {
+   public Builder toBuilder() {
       return new ConcreteBuilder().fromMediaType(this);
    }
 
-   public abstract static class Builder<T extends Builder<T>>  {
+   public abstract static class Builder<T extends Builder<T>> {
       protected abstract T self();
 
       protected String base;
@@ -80,9 +81,7 @@ public class MediaType {
    private final String base;
    private final String type;
 
-   @ConstructorProperties({
-         "base", "type"
-   })
+   @ConstructorProperties({"base", "type"})
    protected MediaType(@Nullable String base, @Nullable String type) {
       this.base = base;
       this.type = type;
@@ -106,10 +105,10 @@ public class MediaType {
    @Override
    public boolean equals(Object obj) {
       if (this == obj) return true;
-      if (obj == null || getClass() != obj.getClass()) return false;
-      MediaType that = MediaType.class.cast(obj);
-      return Objects.equal(this.base, that.base)
-            && Objects.equal(this.type, that.type);
+      if (!(obj instanceof MediaType)) return false;
+      MediaType that = (MediaType) obj;
+      return Objects.equal(this.base, that.base) &&
+             Objects.equal(this.type, that.type);
    }
 
    protected ToStringHelper string() {
@@ -121,5 +120,4 @@ public class MediaType {
    public String toString() {
       return string().toString();
    }
-
 }
