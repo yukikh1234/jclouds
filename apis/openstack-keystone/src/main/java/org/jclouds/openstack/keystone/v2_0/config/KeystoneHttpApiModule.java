@@ -1,19 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 package org.jclouds.openstack.keystone.v2_0.config;
 
 import java.net.URI;
@@ -52,7 +37,6 @@ public class KeystoneHttpApiModule extends HttpApiModule<KeystoneApi> {
    public KeystoneHttpApiModule() {
    }
 
-   // Allow providers to cleanly contribute their own aliases
    public static MapBinder<URI, URI> namespaceAliasBinder(Binder binder) {
       return MapBinder.newMapBinder(binder, URI.class, URI.class, NamespaceAliases.class).permitDuplicates();
    }
@@ -67,13 +51,21 @@ public class KeystoneHttpApiModule extends HttpApiModule<KeystoneApi> {
    @Provides
    @Singleton
    public final LoadingCache<String, Set<? extends Extension>> provideExtensionsByRegion(final jakarta.inject.Provider<KeystoneApi> keystoneApi) {
+      return createCache(keystoneApi);
+   }
+
+   private LoadingCache<String, Set<? extends Extension>> createCache(final jakarta.inject.Provider<KeystoneApi> keystoneApi) {
       return CacheBuilder.newBuilder().expireAfterWrite(23, TimeUnit.HOURS)
-            .build(CacheLoader.from(Suppliers.memoize(new Supplier<Set<? extends Extension>>() {
-               @Override
-               public Set<? extends Extension> get() {
-                  return keystoneApi.get().getExtensionApi().list();
-               }
-            })));
+            .build(CacheLoader.from(createSupplier(keystoneApi)));
+   }
+
+   private Supplier<Set<? extends Extension>> createSupplier(final jakarta.inject.Provider<KeystoneApi> keystoneApi) {
+      return Suppliers.memoize(new Supplier<Set<? extends Extension>>() {
+         @Override
+         public Set<? extends Extension> get() {
+            return keystoneApi.get().getExtensionApi().list();
+         }
+      });
    }
 
    @Override
